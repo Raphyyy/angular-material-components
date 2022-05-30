@@ -85,6 +85,7 @@ export declare class NgxMatCalendarBody implements OnChanges, OnDestroy {
     _cellPadding: string;
     /** Width of an individual cell. */
     _cellWidth: string;
+    _showPaddedRow: boolean;
     constructor(_elementRef: ElementRef<HTMLElement>, _ngZone: NgZone);
     /** Called when a cell is clicked. */
     _cellClicked(cell: NgxMatCalendarCell, event: MouseEvent): void;
