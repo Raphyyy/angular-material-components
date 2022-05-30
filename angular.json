@@ -36,6 +36,7 @@
             "sourceMap": true,
             "optimization": false,
             "namedChunks": true,
+            "preserveSymlinks": true,
             "allowedCommonJsDependencies": [
               "highlight.js"
             ]

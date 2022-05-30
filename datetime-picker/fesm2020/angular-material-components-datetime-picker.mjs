@@ -3189,4 +3189,3 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
  */
 
 export { DefaultNgxMatCalendarRangeStrategy, MAT_DATEPICKER_VALIDATORS, MAT_DATEPICKER_VALUE_ACCESSOR, MatDatetimePickerInputEvent, NGX_MAT_DATE_FORMATS, NGX_MAT_DATE_RANGE_SELECTION_STRATEGY, NGX_MAT_NATIVE_DATE_FORMATS, NgxMatCalendar, NgxMatCalendarBody, NgxMatCalendarCell, NgxMatCalendarHeader, NgxMatDateAdapter, NgxMatDatetimeContent, NgxMatDatetimeInput, NgxMatDatetimePicker, NgxMatDatetimePickerModule, NgxMatMonthView, NgxMatMultiYearView, NgxMatNativeDateAdapter, NgxMatNativeDateModule, NgxMatTimepickerComponent, NgxMatTimepickerModule, NgxMatYearView, NgxNativeDateModule, getActiveOffset, isSameMultiYearView, yearsPerPage, yearsPerRow };
-//# sourceMappingURL=angular-material-components-datetime-picker.mjs.map
