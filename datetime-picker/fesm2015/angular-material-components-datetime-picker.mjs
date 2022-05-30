@@ -141,7 +141,9 @@ class NgxMatCalendarBody {
         const { rows, numCols } = this;
         if (changes['rows'] || columnChanges) {
             this._firstRowOffset = rows && rows.length && rows[0].length ? numCols - rows[0].length : 0;
-            this._showPaddedRow = (rows.length === 5 && this._firstRowOffset >= this.labelMinRequiredCells);
+            this._showPaddedRow =
+                (rows.length === 5 && this._firstRowOffset >= this.labelMinRequiredCells) ||
+                    (rows.length === 4 && this._firstRowOffset === 0);
         }
         if (changes['cellAspectRatio'] || columnChanges || !this._cellPadding) {
             this._cellPadding = `${50 * this.cellAspectRatio / numCols}%`;
@@ -2641,9 +2643,15 @@ class NgxMatDatetimeInput {
     }
     /** Handles focus events on the input. */
     _onFocus() {
+        var _a;
         // Close datetime picker if opened
-        if (this._datepicker && this._datepicker.opened) {
+        if ((_a = this._datepicker) === null || _a === void 0 ? void 0 : _a.opened) {
             this._datepicker.cancel();
+        }
+        else if (this._datepicker && !this._datepicker.opened) {
+            console.log("cc");
+            this._valueChange.emit(this._value);
+            this._datepicker.open();
         }
     }
     /** Formats a value and sets it on the input element. */
@@ -2660,7 +2668,7 @@ class NgxMatDatetimeInput {
     }
 }
 /** @nocollapse */ /** @nocollapse */ NgxMatDatetimeInput.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimeInput, deps: [{ token: i0.ElementRef }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i2$2.MatFormField, optional: true }], target: i0.ɵɵFactoryTarget.Directive });
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimeInput.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatDatetimeInput, selector: "input[ngxMatDatetimePicker]", inputs: { ngxMatDatetimePicker: "ngxMatDatetimePicker", ngxMatDatetimePickerFilter: "ngxMatDatetimePickerFilter", value: "value", min: "min", max: "max", disabled: "disabled" }, outputs: { dateChange: "dateChange", dateInput: "dateInput" }, host: { listeners: { "input": "_onInput($event.target.value)", "change": "_onChange()", "blur": "_onBlur()", "focus": "_onFocus()", "keydown": "_onKeydown($event)" }, properties: { "attr.aria-haspopup": "_datepicker ? \"dialog\" : null", "attr.aria-owns": "(_datepicker?.opened && _datepicker.id) || null", "attr.min": "min ? _dateAdapter.toIso8601(min) : null", "attr.max": "max ? _dateAdapter.toIso8601(max) : null", "disabled": "disabled" } }, providers: [
+/** @nocollapse */ /** @nocollapse */ NgxMatDatetimeInput.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatDatetimeInput, selector: "input[ngxMatDatetimePicker]", inputs: { ngxMatDatetimePicker: "ngxMatDatetimePicker", ngxMatDatetimePickerFilter: "ngxMatDatetimePickerFilter", value: "value", min: "min", max: "max", disabled: "disabled" }, outputs: { dateChange: "dateChange", dateInput: "dateInput" }, host: { listeners: { "input": "_onInput($event.target.value)", "change": "_onChange()", "blur": "_onBlur()", "focus": "_onFocus()", "dblclick": "_onFocus()", "keydown": "_onKeydown($event)" }, properties: { "attr.aria-haspopup": "_datepicker ? \"dialog\" : null", "attr.aria-owns": "(_datepicker?.opened && _datepicker.id) || null", "attr.min": "min ? _dateAdapter.toIso8601(min) : null", "attr.max": "max ? _dateAdapter.toIso8601(max) : null", "disabled": "disabled" } }, providers: [
         MAT_DATEPICKER_VALUE_ACCESSOR,
         MAT_DATEPICKER_VALIDATORS,
         { provide: MAT_INPUT_VALUE_ACCESSOR, useExisting: NgxMatDatetimeInput },
@@ -2684,6 +2692,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                         '(change)': '_onChange()',
                         '(blur)': '_onBlur()',
                         '(focus)': '_onFocus()',
+                        '(dblclick)': '_onFocus()',
                         '(keydown)': '_onKeydown($event)',
                     },
                     exportAs: 'ngxMatDatetimePickerInput',
