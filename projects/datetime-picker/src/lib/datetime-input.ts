@@ -70,6 +70,7 @@ export class MatDatetimePickerInputEvent<D> {
         '(change)': '_onChange()',
         '(blur)': '_onBlur()',
         '(focus)': '_onFocus()',
+        '(dblclick)': '_onFocus()',
         '(keydown)': '_onKeydown($event)',
     },
     exportAs: 'ngxMatDatetimePickerInput',
@@ -343,8 +344,12 @@ export class NgxMatDatetimeInput<D> implements ControlValueAccessor, OnDestroy, 
     /** Handles focus events on the input. */
     _onFocus() {
         // Close datetime picker if opened
-        if (this._datepicker && this._datepicker.opened) {
+        if (this._datepicker?.opened) {
             this._datepicker.cancel();
+        } else if (this._datepicker && !this._datepicker.opened) {
+          console.log("cc")
+            this._valueChange.emit(this._value);
+            this._datepicker.open();
         }
     }
 
