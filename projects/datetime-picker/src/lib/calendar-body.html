@@ -62,3 +62,8 @@
       <div class="mat-calendar-body-cell-preview"></div>
   </td>
 </tr>
+<tr *ngIf="_showPaddedRow" aria-hidden="true">
+  <td [style.paddingTop]="_cellPadding"
+      [style.paddingBottom]="_cellPadding">
+  </td>
+</tr>

@@ -131,6 +131,9 @@ export class NgxMatCalendarBody implements OnChanges, OnDestroy {
   /** Width of an individual cell. */
   _cellWidth: string;
 
+  // Show a padded row to avoid flicking effect with month arrows' navigation
+  _showPaddedRow: boolean;
+
   constructor(private _elementRef: ElementRef<HTMLElement>, private _ngZone: NgZone) {
     _ngZone.runOutsideAngular(() => {
       const element = _elementRef.nativeElement;
@@ -159,6 +162,7 @@ export class NgxMatCalendarBody implements OnChanges, OnDestroy {
 
     if (changes['rows'] || columnChanges) {
       this._firstRowOffset = rows && rows.length && rows[0].length ? numCols - rows[0].length : 0;
+      this._showPaddedRow = (rows.length === 5 && this._firstRowOffset >= this.labelMinRequiredCells);
     }
 
     if (changes['cellAspectRatio'] || columnChanges || !this._cellPadding) {
