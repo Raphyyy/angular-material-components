@@ -28,7 +28,7 @@
       <tr>
         <td>
           <mat-form-field appearance="legacy">
-            <input type="text" #inputHour matInput (input)="formatInput($any($event).target)" maxlength="2" formControlName="hour" autocomplete="false" name=""
+            <input type="text" #inputHour matInput (input)="formatInput($any($event).target)" maxlength="2" formControlName="hour" autocomplete="nope" name=""
               (keydown.ArrowUp)="change('hour', true); $event.preventDefault()" (focus)="inputHour.select()"
               (keydown.ArrowDown)="change('hour', false); $event.preventDefault()" (blur)="change('hour')">
           </mat-form-field>
@@ -36,7 +36,7 @@
         <td class="ngx-mat-timepicker-spacer">&#58;</td>
         <td>
           <mat-form-field appearance="legacy">
-            <input type="text" #inputMinute matInput (input)="formatInput($any($event).target)" maxlength="2" autocomplete="false" name=""
+            <input type="text" #inputMinute matInput (input)="formatInput($any($event).target)" maxlength="2" autocomplete="nope" name=""
               formControlName="minute" (keydown.ArrowUp)="change('minute', true); $event.preventDefault()" (focus)="inputMinute.select()"
               (keydown.ArrowDown)="change('minute', false); $event.preventDefault()" (blur)="change('minute')">
           </mat-form-field>
@@ -44,7 +44,7 @@
         <td *ngIf="showSeconds" class="ngx-mat-timepicker-spacer">&#58;</td>
         <td *ngIf="showSeconds">
           <mat-form-field appearance="legacy">
-            <input type="text" #inputSecond matInput (input)="formatInput($any($event).target)" maxlength="2" autocomplete="false" name=""
+            <input type="text" #inputSecond matInput (input)="formatInput($any($event).target)" maxlength="2" autocomplete="nope" name=""
               formControlName="second" (keydown.ArrowUp)="change('second', true); $event.preventDefault()" (focus)="inputSecond.select()"
               (keydown.ArrowDown)="change('second', false); $event.preventDefault()" (blur)="change('second')">
           </mat-form-field>
