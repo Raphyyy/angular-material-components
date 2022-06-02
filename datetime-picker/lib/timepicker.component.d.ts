@@ -1,9 +1,9 @@
-import { ChangeDetectorRef, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, ElementRef, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { ControlValueAccessor, FormBuilder, FormGroup } from '@angular/forms';
 import { ThemePalette } from '@angular/material/core';
 import { NgxMatDateAdapter } from './core/date-adapter';
 import * as i0 from "@angular/core";
-export declare class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnInit, OnChanges {
+export declare class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnInit, AfterViewInit, OnChanges {
     _dateAdapter: NgxMatDateAdapter<D>;
     private cd;
     private formBuilder;
@@ -31,8 +31,14 @@ export declare class NgxMatTimepickerComponent<D> implements ControlValueAccesso
     private _model;
     private _destroyed;
     pattern: RegExp;
+    /** Used to auto switch focus when input 2 number in time inputs */
+    private inputFields;
+    inputHour: ElementRef;
+    inputMinute: ElementRef;
+    inputSecond: ElementRef;
     constructor(_dateAdapter: NgxMatDateAdapter<D>, cd: ChangeDetectorRef, formBuilder: FormBuilder);
     ngOnInit(): void;
+    ngAfterViewInit(): void;
     ngOnChanges(changes: SimpleChanges): void;
     ngOnDestroy(): void;
     /**
