@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, forwardRef, Input, OnChanges, OnInit, Optional, SimpleChanges, ViewEncapsulation } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, forwardRef, Input, OnChanges, OnInit, Optional, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core';
 import { ControlValueAccessor, FormBuilder, FormGroup, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
 import { ThemePalette } from '@angular/material/core';
 import { Subject } from 'rxjs';
@@ -23,7 +23,7 @@ import { createMissingDateImplError, DEFAULT_STEP, formatTwoDigitTimeValue, LIMI
   exportAs: 'ngxMatTimepicker',
   encapsulation: ViewEncapsulation.None,
 })
-export class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnInit, OnChanges {
+export class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnInit, AfterViewInit, OnChanges {
 
   public form: FormGroup;
 
@@ -70,6 +70,13 @@ export class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnIni
 
   public pattern = PATTERN_INPUT_HOUR;
 
+  /** Used to auto switch focus when input 2 number in time inputs */
+  private inputFields: Array<HTMLInputElement>;
+
+  @ViewChild("inputHour") inputHour: ElementRef;
+  @ViewChild("inputMinute") inputMinute: ElementRef;
+  @ViewChild("inputSecond") inputSecond: ElementRef;
+
   constructor(@Optional() public _dateAdapter: NgxMatDateAdapter<D>,
     private cd: ChangeDetectorRef, private formBuilder: FormBuilder) {
     if (!this._dateAdapter) {
@@ -86,7 +93,17 @@ export class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnIni
   ngOnInit() {
     this.form.valueChanges.pipe(takeUntil(this._destroyed), debounceTime(400)).subscribe(val => {
       this._updateModel();
-    })
+    });
+  }
+
+  ngAfterViewInit() {
+    this.inputFields = [
+      this.inputHour.nativeElement,
+      this.inputMinute.nativeElement,
+    ];
+    if (this.showSeconds) {
+      this.inputFields.push(this.inputSecond.nativeElement);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -140,6 +157,15 @@ export class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnIni
    */
   public formatInput(input: HTMLInputElement) {
     input.value = input.value.replace(NUMERIC_REGEX, '');
+
+    // If input length is 2, switch focus to the next <input>
+    if (input.value.length === 2) {
+      const inputIndex = this.inputFields.findIndex(inputField => inputField === input);
+
+      if (inputIndex !== -1 && inputIndex !== this.inputFields.length - 1) {
+        this.inputFields[inputIndex + 1].focus();
+      }
+    }
   }
 
   /** Toggle meridian */

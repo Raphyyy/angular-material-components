@@ -347,7 +347,6 @@ export class NgxMatDatetimeInput<D> implements ControlValueAccessor, OnDestroy, 
         if (this._datepicker?.opened) {
             this._datepicker.cancel();
         } else if (this._datepicker && !this._datepicker.opened) {
-          console.log("cc")
             this._valueChange.emit(this._value);
             this._datepicker.open();
         }
