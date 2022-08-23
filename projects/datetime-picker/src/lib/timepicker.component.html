@@ -26,6 +26,7 @@
       </tr>
 
       <tr>
+        <input type="password" name="prevent_autofill" value="" style="display:none;" />
         <td>
           <mat-form-field appearance="legacy">
             <input type="text" #inputHour matInput (input)="formatInput($any($event).target)" maxlength="2" formControlName="hour" autocomplete="new-password" name=""
