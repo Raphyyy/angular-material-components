@@ -15,7 +15,7 @@ $sizeButtonMeridian: 36px;
               font-weight: bold;
             }
             &.ngx-mat-timepicker-meridian {
-              .mat-button {
+              .mat-mdc-button {
                 min-width: 64px;
                 line-height: $sizeButtonMeridian;
                 border-radius: 4px;
@@ -28,7 +28,7 @@ $sizeButtonMeridian: 36px;
               }
             }
 
-            .mat-icon-button {
+            .mat-mdc-icon-button {
               height: $fontSizeIcon;
               width: $fontSizeIcon;
               line-height: $fontSizeIcon;
@@ -38,11 +38,11 @@ $sizeButtonMeridian: 36px;
                 font-size: $fontSizeIcon;
               }
             }
-            .mat-form-field {
+            .mat-mdc-form-field {
               width: 20px;
               max-width: 20px;
               text-align: center;
-
+              /* TODO(mdc-migration): The following rule targets internal classes of form-field that may no longer apply for the MDC version. */
               & .mat-form-field-flex {
                 padding: 0;
               }

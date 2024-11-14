@@ -1,5 +1,5 @@
 import { AfterContentInit, ChangeDetectorRef, Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core';
-import { MatLegacyButton as MatButton } from '@angular/material/legacy-button';
+import { MatButton } from '@angular/material/button';
 import { merge, of, Subscription } from 'rxjs';
 import { NgxMatColorPickerComponent } from '../color-picker/color-picker.component';
 

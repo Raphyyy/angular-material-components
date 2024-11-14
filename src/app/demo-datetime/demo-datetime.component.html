@@ -237,11 +237,11 @@
 
   </mat-tab>
   <mat-tab label="Example">
-    <mat-card class="zone zone-value">
+    <mat-card appearance="outlined" class="zone zone-value">
       Selected date: {{dateControl.value?.toLocaleString()}}
     </mat-card>
 
-    <mat-card class="zone zone-picker">
+    <mat-card appearance="outlined" class="zone zone-picker">
       <mat-form-field>
         <input matInput [ngxMatDatetimePicker]="picker" placeholder="Choose a date" [formControl]="dateControl"
           [min]="minDate" [max]="maxDate" [disabled]="disabled">
@@ -253,7 +253,7 @@
       </mat-form-field>
     </mat-card>
 
-    <mat-card class="zone zone-config">
+    <mat-card appearance="outlined" class="zone zone-config">
       <div class="config-wrapper">
         <span class="label">disabled (Default: false) </span>
         <mat-radio-group aria-label="Select an option" [(ngModel)]="disabled">
@@ -371,7 +371,7 @@
     <h2>Custom icon or text for Apply button</h2>
     <pre><code ngxMatHighlight class="language-html">{{code9}}</code></pre>
 
-    <mat-card class="zone zone-picker">
+    <mat-card appearance="outlined" class="zone zone-picker">
       <mat-form-field>
         <input matInput [ngxMatDatetimePicker]="pickerCustomIcon" placeholder="Choose a date" [formControl]="dateControl"
           [min]="minDate" [max]="maxDate" [disabled]="disabled">

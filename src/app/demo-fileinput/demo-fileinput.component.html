@@ -80,7 +80,7 @@
     <pre><code ngxMatHighlight class="language-css">{{code6}}</code></pre>
   </mat-tab>
   <mat-tab label="Example">
-    <mat-card class="zone zone-picker">
+    <mat-card appearance="outlined" class="zone zone-picker">
       <mat-form-field>
         <ngx-mat-file-input [formControl]="fileControl" [multiple]="multiple" [accept]="accept" [color]="color">
           <!-- <mat-icon ngxMatFileInputIcon>folder</mat-icon> -->
@@ -88,7 +88,7 @@
       </mat-form-field>
     </mat-card>
 
-    <mat-card class="zone zone-value flex-column">
+    <mat-card appearance="outlined" class="zone zone-value flex-column">
 
       <div class="title">Selected file(s):</div>
       <div class="value">
@@ -98,12 +98,12 @@
       </div>
     </mat-card>
 
-    <mat-card class="zone zone-errors flex-column">
+    <mat-card appearance="outlined" class="zone zone-errors flex-column">
       <div class="title">Errors (Max size: {{maxSize}}Ko)</div>
       <div class="value">{{fileControl.errors | json}}</div>
     </mat-card>
 
-    <mat-card class="zone zone-config">
+    <mat-card appearance="outlined" class="zone zone-config">
       <div class="config-wrapper">
         <span class="label">disabled (Default: false) </span>
         <mat-radio-group aria-label="Select an option" [ngModel]="disabled" (ngModelChange)="onDisabledChanged($event)">

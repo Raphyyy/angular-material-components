@@ -50,7 +50,7 @@ $sizeButtonPreview: 40px;
         width: $sizeButtonPreview;
       }
 
-      .mat-form-field {
+      .mat-mdc-form-field {
         margin-left: 16px;
         &:first-of-type {
           width: 170px;
@@ -67,7 +67,7 @@ $sizeButtonPreview: 40px;
     }
   }
 
-  .mat-form-field {
+  .mat-mdc-form-field {
     &-label {
       font-weight: bold;
     }
