@@ -48,6 +48,7 @@ $mat-calendar-next-icon-transform: translateX(-2px) rotate(45deg);
 
 .mat-calendar-period-button {
   min-width: 0;
+  background-color: unset;
 }
 
 .mat-calendar-arrow {
@@ -73,6 +74,7 @@ $mat-calendar-next-icon-transform: translateX(-2px) rotate(45deg);
 .mat-calendar-previous-button,
 .mat-calendar-next-button {
   position: relative;
+  background-color: unset;
 
   &::after {
     @include mat-fill;

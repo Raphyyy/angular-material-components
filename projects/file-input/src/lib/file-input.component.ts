@@ -17,6 +17,7 @@ const _NgxMatInputMixinBase = mixinErrorState(
       public _parentFormGroup: FormGroupDirective,
       /** @docs-private */
       public ngControl: NgControl,
+      public stateChanges: Subject<void>,
     ) { }
   },
 );
@@ -135,8 +136,9 @@ export class NgxMatFileInputComponent extends _NgxMatInputMixinBase implements M
     @Optional() @Self() public ngControl: NgControl,
     @Optional() _parentForm: NgForm,
     @Optional() _parentFormGroup: FormGroupDirective,
-    _defaultErrorStateMatcher: ErrorStateMatcher) {
-    super(_defaultErrorStateMatcher, _parentForm, _parentFormGroup, ngControl);
+    _defaultErrorStateMatcher: ErrorStateMatcher,
+    stateChange: Subject<void>) {
+    super(_defaultErrorStateMatcher, _parentForm, _parentFormGroup, ngControl, stateChange);
 
     this.id = this.id;
 
