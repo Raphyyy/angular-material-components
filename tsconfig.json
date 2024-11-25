@@ -6,15 +6,15 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "declaration": false,
-    "module": "esnext",
+    "module": "es2020",
     "moduleResolution": "node",
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "es2020",
+    "target": "ES2022",
     "typeRoots": [
       "node_modules/@types"
     ],
-    "lib": ["es5", "es2015", "dom"],
+    "lib": ["es5", "es2019", "dom"],
     "types": ["node"],
     "paths": {
       "@angular-material-components/*": [
