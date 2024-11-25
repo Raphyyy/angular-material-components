@@ -19,7 +19,7 @@ import * as i0 from "@angular/core";
  * Possible views for the calendar.
  * @docs-private
  */
-export declare type MatCalendarView = 'month' | 'year' | 'multi-year';
+export type MatCalendarView = 'month' | 'year' | 'multi-year';
 /** Default header for NgxMatCalendar */
 export declare class NgxMatCalendarHeader<D> {
     private _intl;
@@ -47,7 +47,7 @@ export declare class NgxMatCalendarHeader<D> {
     /** Whether the two dates represent the same view in the current view mode (month or year). */
     private _isSameView;
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatCalendarHeader<any>, [null, null, { optional: true; }, { optional: true; }, null]>;
-    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatCalendarHeader<any>, "ngx-mat-calendar-header", ["ngxMatCalendarHeader"], {}, {}, never, ["*"]>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatCalendarHeader<any>, "ngx-mat-calendar-header", ["ngxMatCalendarHeader"], {}, {}, never, ["*"], false, never>;
 }
 /**
  * A calendar that is used as part of the datepicker.
@@ -150,5 +150,5 @@ export declare class NgxMatCalendar<D> implements AfterContentInit, AfterViewChe
     /** Returns the component instance that corresponds to the current calendar view. */
     private _getCurrentViewComponent;
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatCalendar<any>, [null, { optional: true; }, { optional: true; }, null]>;
-    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatCalendar<any>, "ngx-mat-calendar", ["ngxMatCalendar"], { "headerComponent": "headerComponent"; "startAt": "startAt"; "startView": "startView"; "selected": "selected"; "minDate": "minDate"; "maxDate": "maxDate"; "dateFilter": "dateFilter"; "dateClass": "dateClass"; }, { "selectedChange": "selectedChange"; "yearSelected": "yearSelected"; "monthSelected": "monthSelected"; "_userSelection": "_userSelection"; }, never, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatCalendar<any>, "ngx-mat-calendar", ["ngxMatCalendar"], { "headerComponent": { "alias": "headerComponent"; "required": false; }; "startAt": { "alias": "startAt"; "required": false; }; "startView": { "alias": "startView"; "required": false; }; "selected": { "alias": "selected"; "required": false; }; "minDate": { "alias": "minDate"; "required": false; }; "maxDate": { "alias": "maxDate"; "required": false; }; "dateFilter": { "alias": "dateFilter"; "required": false; }; "dateClass": { "alias": "dateClass"; "required": false; }; }, { "selectedChange": "selectedChange"; "yearSelected": "yearSelected"; "monthSelected": "monthSelected"; "_userSelection": "_userSelection"; }, never, never, false, never>;
 }

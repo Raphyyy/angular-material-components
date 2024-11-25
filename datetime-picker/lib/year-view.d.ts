@@ -92,5 +92,5 @@ export declare class NgxMatYearView<D> implements AfterContentInit, OnDestroy {
     /** Sets the currently-selected month based on a model value. */
     private _setSelectedMonth;
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatYearView<any>, [null, { optional: true; }, { optional: true; }, { optional: true; }]>;
-    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatYearView<any>, "ngx-mat-year-view", ["ngxMatYearView"], { "activeDate": "activeDate"; "selected": "selected"; "minDate": "minDate"; "maxDate": "maxDate"; "dateFilter": "dateFilter"; }, { "selectedChange": "selectedChange"; "monthSelected": "monthSelected"; "activeDateChange": "activeDateChange"; }, never, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatYearView<any>, "ngx-mat-year-view", ["ngxMatYearView"], { "activeDate": { "alias": "activeDate"; "required": false; }; "selected": { "alias": "selected"; "required": false; }; "minDate": { "alias": "minDate"; "required": false; }; "maxDate": { "alias": "maxDate"; "required": false; }; "dateFilter": { "alias": "dateFilter"; "required": false; }; }, { "selectedChange": "selectedChange"; "monthSelected": "monthSelected"; "activeDateChange": "activeDateChange"; }, never, never, false, never>;
 }

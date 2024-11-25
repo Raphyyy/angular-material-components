@@ -118,5 +118,5 @@ export declare class NgxMatDatetimeInput<D> implements ControlValueAccessor, OnD
      */
     private _getValidDateOrNull;
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatDatetimeInput<any>, [null, { optional: true; }, { optional: true; }, { optional: true; }]>;
-    static ɵdir: i0.ɵɵDirectiveDeclaration<NgxMatDatetimeInput<any>, "input[ngxMatDatetimePicker]", ["ngxMatDatetimePickerInput"], { "ngxMatDatetimePicker": "ngxMatDatetimePicker"; "ngxMatDatetimePickerFilter": "ngxMatDatetimePickerFilter"; "value": "value"; "min": "min"; "max": "max"; "disabled": "disabled"; }, { "dateChange": "dateChange"; "dateInput": "dateInput"; }, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<NgxMatDatetimeInput<any>, "input[ngxMatDatetimePicker]", ["ngxMatDatetimePickerInput"], { "ngxMatDatetimePicker": { "alias": "ngxMatDatetimePicker"; "required": false; }; "ngxMatDatetimePickerFilter": { "alias": "ngxMatDatetimePickerFilter"; "required": false; }; "value": { "alias": "value"; "required": false; }; "min": { "alias": "min"; "required": false; }; "max": { "alias": "max"; "required": false; }; "disabled": { "alias": "disabled"; "required": false; }; }, { "dateChange": "dateChange"; "dateInput": "dateInput"; }, never, never, false, never>;
 }

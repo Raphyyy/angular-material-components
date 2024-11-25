@@ -1,5 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, ElementRef, OnChanges, OnInit, SimpleChanges } from '@angular/core';
-import { ControlValueAccessor, FormBuilder, FormGroup } from '@angular/forms';
+import { ControlValueAccessor, UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { ThemePalette } from '@angular/material/core';
 import { NgxMatDateAdapter } from './core/date-adapter';
 import * as i0 from "@angular/core";
@@ -7,7 +7,7 @@ export declare class NgxMatTimepickerComponent<D> implements ControlValueAccesso
     _dateAdapter: NgxMatDateAdapter<D>;
     private cd;
     private formBuilder;
-    form: FormGroup;
+    form: UntypedFormGroup;
     disabled: boolean;
     showSpinners: boolean;
     stepHour: number;
@@ -36,7 +36,7 @@ export declare class NgxMatTimepickerComponent<D> implements ControlValueAccesso
     inputHour: ElementRef;
     inputMinute: ElementRef;
     inputSecond: ElementRef;
-    constructor(_dateAdapter: NgxMatDateAdapter<D>, cd: ChangeDetectorRef, formBuilder: FormBuilder);
+    constructor(_dateAdapter: NgxMatDateAdapter<D>, cd: ChangeDetectorRef, formBuilder: UntypedFormBuilder);
     ngOnInit(): void;
     ngAfterViewInit(): void;
     ngOnChanges(changes: SimpleChanges): void;
@@ -78,5 +78,5 @@ export declare class NgxMatTimepickerComponent<D> implements ControlValueAccesso
      */
     private _setDisableStates;
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatTimepickerComponent<any>, [{ optional: true; }, null, null]>;
-    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatTimepickerComponent<any>, "ngx-mat-timepicker", ["ngxMatTimepicker"], { "disabled": "disabled"; "showSpinners": "showSpinners"; "stepHour": "stepHour"; "stepMinute": "stepMinute"; "stepSecond": "stepSecond"; "showSeconds": "showSeconds"; "disableMinute": "disableMinute"; "enableMeridian": "enableMeridian"; "defaultTime": "defaultTime"; "color": "color"; }, {}, never, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatTimepickerComponent<any>, "ngx-mat-timepicker", ["ngxMatTimepicker"], { "disabled": { "alias": "disabled"; "required": false; }; "showSpinners": { "alias": "showSpinners"; "required": false; }; "stepHour": { "alias": "stepHour"; "required": false; }; "stepMinute": { "alias": "stepMinute"; "required": false; }; "stepSecond": { "alias": "stepSecond"; "required": false; }; "showSeconds": { "alias": "showSeconds"; "required": false; }; "disableMinute": { "alias": "disableMinute"; "required": false; }; "enableMeridian": { "alias": "enableMeridian"; "required": false; }; "defaultTime": { "alias": "defaultTime"; "required": false; }; "color": { "alias": "color"; "required": false; }; }, {}, never, never, false, never>;
 }

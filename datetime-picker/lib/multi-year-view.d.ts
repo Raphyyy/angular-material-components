@@ -73,7 +73,7 @@ export declare class NgxMatMultiYearView<D> implements AfterContentInit, OnDestr
     /** Sets the currently-highlighted year based on a model value. */
     private _setSelectedYear;
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatMultiYearView<any>, [null, { optional: true; }, { optional: true; }]>;
-    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatMultiYearView<any>, "ngx-mat-multi-year-view", ["ngxMatMultiYearView"], { "activeDate": "activeDate"; "selected": "selected"; "minDate": "minDate"; "maxDate": "maxDate"; "dateFilter": "dateFilter"; }, { "selectedChange": "selectedChange"; "yearSelected": "yearSelected"; "activeDateChange": "activeDateChange"; }, never, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatMultiYearView<any>, "ngx-mat-multi-year-view", ["ngxMatMultiYearView"], { "activeDate": { "alias": "activeDate"; "required": false; }; "selected": { "alias": "selected"; "required": false; }; "minDate": { "alias": "minDate"; "required": false; }; "maxDate": { "alias": "maxDate"; "required": false; }; "dateFilter": { "alias": "dateFilter"; "required": false; }; }, { "selectedChange": "selectedChange"; "yearSelected": "yearSelected"; "activeDateChange": "activeDateChange"; }, never, never, false, never>;
 }
 export declare function isSameMultiYearView<D>(dateAdapter: NgxMatDateAdapter<D>, date1: D, date2: D, minDate: D | null, maxDate: D | null): boolean;
 /**

@@ -1,4 +1,4 @@
-import * as i7 from '@angular/cdk/portal';
+import * as i5 from '@angular/cdk/portal';
 import { ComponentPortal, TemplatePortal, PortalModule } from '@angular/cdk/portal';
 import * as i0 from '@angular/core';
 import { InjectionToken, EventEmitter, Component, ViewEncapsulation, ChangeDetectionStrategy, Input, Output, Injectable, Optional, Inject, ViewChild, forwardRef, TemplateRef, ContentChild, Directive, NgModule } from '@angular/core';
@@ -18,11 +18,11 @@ import * as i9 from '@angular/cdk/overlay';
 import { OverlayConfig } from '@angular/cdk/overlay';
 import * as i2$1 from '@angular/forms';
 import { Validators, NG_VALUE_ACCESSOR, NG_VALIDATORS, ReactiveFormsModule, FormsModule } from '@angular/forms';
-import * as i4 from '@angular/material/icon';
-import { MatIconModule } from '@angular/material/icon';
-import * as i2$2 from '@angular/material/form-field';
-import * as i7$1 from '@angular/material/input';
+import * as i4 from '@angular/material/input';
 import { MAT_INPUT_VALUE_ACCESSOR, MatInputModule } from '@angular/material/input';
+import * as i2$2 from '@angular/material/form-field';
+import * as i6 from '@angular/material/icon';
+import { MatIconModule } from '@angular/material/icon';
 import * as i8 from '@angular/material/dialog';
 import { MatDialogModule } from '@angular/material/dialog';
 import * as i1$2 from '@angular/cdk/platform';
@@ -49,6 +49,13 @@ const NGX_MAT_DATE_FORMATS = new InjectionToken('ngx-mat-date-formats');
  * @docs-private
  */
 class NgxMatCalendarCell {
+    value;
+    displayValue;
+    ariaLabel;
+    enabled;
+    cssClasses;
+    compareValue;
+    rawValue;
     constructor(value, displayValue, ariaLabel, enabled, cssClasses = {}, compareValue = value, rawValue) {
         this.value = value;
         this.displayValue = displayValue;
@@ -64,60 +71,59 @@ class NgxMatCalendarCell {
  * @docs-private
  */
 class NgxMatCalendarBody {
+    _elementRef;
+    _ngZone;
+    /**
+     * Used to skip the next focus event when rendering the preview range.
+     * We need a flag like this, because some browsers fire focus events asynchronously.
+     */
+    _skipNextFocus;
+    /** The label for the table. (e.g. "Jan 2017"). */
+    label;
+    /** The cells to display in the table. */
+    rows;
+    /** The value in the table that corresponds to today. */
+    todayValue;
+    /** Start value of the selected date range. */
+    startValue;
+    /** End value of the selected date range. */
+    endValue;
+    /** The minimum number of free cells needed to fit the label in the first row. */
+    labelMinRequiredCells;
+    /** The number of columns in the table. */
+    numCols = 7;
+    /** The cell number of the active cell in the table. */
+    activeCell = 0;
+    /** Whether a range is being selected. */
+    isRange = false;
+    /**
+     * The aspect ratio (width / height) to use for the cells in the table. This aspect ratio will be
+     * maintained even as the table resizes.
+     */
+    cellAspectRatio = 1;
+    /** Start of the comparison range. */
+    comparisonStart;
+    /** End of the comparison range. */
+    comparisonEnd;
+    /** Start of the preview range. */
+    previewStart = null;
+    /** End of the preview range. */
+    previewEnd = null;
+    /** Emits when a new value is selected. */
+    selectedValueChange = new EventEmitter();
+    /** Emits when the preview has changed as a result of a user action. */
+    previewChange = new EventEmitter();
+    /** The number of blank cells to put at the beginning for the first row. */
+    _firstRowOffset;
+    /** Padding for the individual date cells. */
+    _cellPadding;
+    /** Width of an individual cell. */
+    _cellWidth;
+    /** Show a padded row to avoid flicking effect with month arrows' navigation */
+    _showPaddedRow;
     constructor(_elementRef, _ngZone) {
         this._elementRef = _elementRef;
         this._ngZone = _ngZone;
-        /** The number of columns in the table. */
-        this.numCols = 7;
-        /** The cell number of the active cell in the table. */
-        this.activeCell = 0;
-        /** Whether a range is being selected. */
-        this.isRange = false;
-        /**
-         * The aspect ratio (width / height) to use for the cells in the table. This aspect ratio will be
-         * maintained even as the table resizes.
-         */
-        this.cellAspectRatio = 1;
-        /** Start of the preview range. */
-        this.previewStart = null;
-        /** End of the preview range. */
-        this.previewEnd = null;
-        /** Emits when a new value is selected. */
-        this.selectedValueChange = new EventEmitter();
-        /** Emits when the preview has changed as a result of a user action. */
-        this.previewChange = new EventEmitter();
-        /**
-         * Event handler for when the user enters an element
-         * inside the calendar body (e.g. by hovering in or focus).
-         */
-        this._enterHandler = (event) => {
-            if (this._skipNextFocus && event.type === 'focus') {
-                this._skipNextFocus = false;
-                return;
-            }
-            // We only need to hit the zone when we're selecting a range.
-            if (event.target && this.isRange) {
-                const cell = this._getCellFromElement(event.target);
-                if (cell) {
-                    this._ngZone.run(() => this.previewChange.emit({ value: cell.enabled ? cell : null, event }));
-                }
-            }
-        };
-        /**
-         * Event handler for when the user's pointer leaves an element
-         * inside the calendar body (e.g. by hovering out or blurring).
-         */
-        this._leaveHandler = (event) => {
-            // We only need to hit the zone when we're selecting a range.
-            if (this.previewEnd !== null && this.isRange) {
-                // Only reset the preview end value when leaving cells. This looks better, because
-                // we have a gap between the cells and the rows and we don't want to remove the
-                // range just for it to show up again when the user moves a few pixels to the side.
-                if (event.target && isTableCell(event.target)) {
-                    this._ngZone.run(() => this.previewChange.emit({ value: null, event }));
-                }
-            }
-        };
         _ngZone.runOutsideAngular(() => {
             const element = _elementRef.nativeElement;
             element.addEventListener('mouseenter', this._enterHandler, true);
@@ -242,6 +248,38 @@ class NgxMatCalendarBody {
     _isInPreview(value) {
         return isInRange(value, this.previewStart, this.previewEnd, this.isRange);
     }
+    /**
+     * Event handler for when the user enters an element
+     * inside the calendar body (e.g. by hovering in or focus).
+     */
+    _enterHandler = (event) => {
+        if (this._skipNextFocus && event.type === 'focus') {
+            this._skipNextFocus = false;
+            return;
+        }
+        // We only need to hit the zone when we're selecting a range.
+        if (event.target && this.isRange) {
+            const cell = this._getCellFromElement(event.target);
+            if (cell) {
+                this._ngZone.run(() => this.previewChange.emit({ value: cell.enabled ? cell : null, event }));
+            }
+        }
+    };
+    /**
+     * Event handler for when the user's pointer leaves an element
+     * inside the calendar body (e.g. by hovering out or blurring).
+     */
+    _leaveHandler = (event) => {
+        // We only need to hit the zone when we're selecting a range.
+        if (this.previewEnd !== null && this.isRange) {
+            // Only reset the preview end value when leaving cells. This looks better, because
+            // we have a gap between the cells and the rows and we don't want to remove the
+            // range just for it to show up again when the user moves a few pixels to the side.
+            if (event.target && isTableCell(event.target)) {
+                this._ngZone.run(() => this.previewChange.emit({ value: null, event }));
+            }
+        }
+    };
     /** Finds the NgxMatCalendarCell that corresponds to a DOM node. */
     _getCellFromElement(element) {
         let cell;
@@ -260,17 +298,17 @@ class NgxMatCalendarBody {
         }
         return null;
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatCalendarBody, deps: [{ token: i0.ElementRef }, { token: i0.NgZone }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: { label: "label", rows: "rows", todayValue: "todayValue", startValue: "startValue", endValue: "endValue", labelMinRequiredCells: "labelMinRequiredCells", numCols: "numCols", activeCell: "activeCell", isRange: "isRange", cellAspectRatio: "cellAspectRatio", comparisonStart: "comparisonStart", comparisonEnd: "comparisonEnd", previewStart: "previewStart", previewEnd: "previewEnd" }, outputs: { selectedValueChange: "selectedValueChange", previewChange: "previewChange" }, host: { attributes: { "role": "grid", "aria-readonly": "true" }, classAttribute: "ngx-mat-calendar-body" }, exportAs: ["NgxMatCalendarBody"], usesOnChanges: true, ngImport: i0, template: "<!--\r\n  If there's not enough space in the first row, create a separate label row. We mark this row as\r\n  aria-hidden because we don't want it to be read out as one of the weeks in the month.\r\n-->\r\n<tr *ngIf=\"_firstRowOffset < labelMinRequiredCells\" aria-hidden=\"true\">\r\n  <td class=\"mat-calendar-body-label\"\r\n      [attr.colspan]=\"numCols\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n    {{label}}\r\n  </td>\r\n</tr>\r\n\r\n<!-- Create the first row separately so we can include a special spacer cell. -->\r\n<tr *ngFor=\"let row of rows; let rowIndex = index\" role=\"row\">\r\n  <!--\r\n    We mark this cell as aria-hidden so it doesn't get read out as one of the days in the week.\r\n    The aspect ratio of the table cells is maintained by setting the top and bottom padding as a\r\n    percentage of the width (a variant of the trick described here:\r\n    https://www.w3schools.com/howto/howto_css_aspect_ratio.asp).\r\n  -->\r\n  <td *ngIf=\"rowIndex === 0 && _firstRowOffset\"\r\n      aria-hidden=\"true\"\r\n      class=\"mat-calendar-body-label\"\r\n      [attr.colspan]=\"_firstRowOffset\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n    {{_firstRowOffset >= labelMinRequiredCells ? label : ''}}\r\n  </td>\r\n  <td *ngFor=\"let item of row; let colIndex = index\"\r\n      role=\"gridcell\"\r\n      class=\"mat-calendar-body-cell\"\r\n      [ngClass]=\"item.cssClasses\"\r\n      [tabindex]=\"_isActiveCell(rowIndex, colIndex) ? 0 : -1\"\r\n      [attr.data-mat-row]=\"rowIndex\"\r\n      [attr.data-mat-col]=\"colIndex\"\r\n      [class.mat-calendar-body-disabled]=\"!item.enabled\"\r\n      [class.mat-calendar-body-active]=\"_isActiveCell(rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-range-start]=\"_isRangeStart(item.compareValue)\"\r\n      [class.mat-calendar-body-range-end]=\"_isRangeEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-range]=\"_isInRange(item.compareValue)\"\r\n      [class.mat-calendar-body-comparison-bridge-start]=\"_isComparisonBridgeStart(item.compareValue, rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-comparison-bridge-end]=\"_isComparisonBridgeEnd(item.compareValue, rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-comparison-start]=\"_isComparisonStart(item.compareValue)\"\r\n      [class.mat-calendar-body-comparison-end]=\"_isComparisonEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-comparison-range]=\"_isInComparisonRange(item.compareValue)\"\r\n      [class.mat-calendar-body-preview-start]=\"_isPreviewStart(item.compareValue)\"\r\n      [class.mat-calendar-body-preview-end]=\"_isPreviewEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-preview]=\"_isInPreview(item.compareValue)\"\r\n      [attr.aria-label]=\"item.ariaLabel\"\r\n      [attr.aria-disabled]=\"!item.enabled || null\"\r\n      [attr.aria-selected]=\"_isSelected(item)\"\r\n      (click)=\"_cellClicked(item, $event)\"\r\n      [style.width]=\"_cellWidth\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n      <div class=\"mat-calendar-body-cell-content mat-focus-indicator\"\r\n        [class.mat-calendar-body-selected]=\"_isSelected(item)\"\r\n        [class.mat-calendar-body-today]=\"todayValue === item.compareValue\">\r\n        {{item.displayValue}}\r\n      </div>\r\n      <div class=\"mat-calendar-body-cell-preview\"></div>\r\n  </td>\r\n</tr>\r\n<tr *ngIf=\"_showPaddedRow\" aria-hidden=\"true\">\r\n  <td [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n  </td>\r\n</tr>", styles: [".mat-calendar-body{min-width:224px}.mat-calendar-body-label{height:0;line-height:0;text-align:left;padding-left:4.7142857143%;padding-right:4.7142857143%}.mat-calendar-body-cell{position:relative;height:0;line-height:0;text-align:center;outline:none;cursor:pointer}.mat-calendar-body-cell:before,.mat-calendar-body-cell:after,.mat-calendar-body-cell-preview{content:\"\";position:absolute;top:5%;left:0;z-index:0;box-sizing:border-box;height:90%;width:100%}.mat-calendar-body-range-start:not(.mat-calendar-body-in-comparison-range):before,.mat-calendar-body-range-start:after,.mat-calendar-body-comparison-start:not(.mat-calendar-body-comparison-bridge-start):before,.mat-calendar-body-comparison-start:after,.mat-calendar-body-preview-start .mat-calendar-body-cell-preview{left:5%;width:95%;border-top-left-radius:999px;border-bottom-left-radius:999px}[dir=rtl] .mat-calendar-body-range-start:not(.mat-calendar-body-in-comparison-range):before,[dir=rtl] .mat-calendar-body-range-start:after,[dir=rtl] .mat-calendar-body-comparison-start:not(.mat-calendar-body-comparison-bridge-start):before,[dir=rtl] .mat-calendar-body-comparison-start:after,[dir=rtl] .mat-calendar-body-preview-start .mat-calendar-body-cell-preview{left:0;border-radius:0 999px 999px 0}.mat-calendar-body-range-end:not(.mat-calendar-body-in-comparison-range):before,.mat-calendar-body-range-end:after,.mat-calendar-body-comparison-end:not(.mat-calendar-body-comparison-bridge-end):before,.mat-calendar-body-comparison-end:after,.mat-calendar-body-preview-end .mat-calendar-body-cell-preview{width:95%;border-top-right-radius:999px;border-bottom-right-radius:999px}[dir=rtl] .mat-calendar-body-range-end:not(.mat-calendar-body-in-comparison-range):before,[dir=rtl] .mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-end:not(.mat-calendar-body-comparison-bridge-end):before,[dir=rtl] .mat-calendar-body-comparison-end:after,[dir=rtl] .mat-calendar-body-preview-end .mat-calendar-body-cell-preview{left:5%;border-radius:999px 0 0 999px}[dir=rtl] .mat-calendar-body-comparison-bridge-start.mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-bridge-end.mat-calendar-body-range-start:after{width:95%;border-top-right-radius:999px;border-bottom-right-radius:999px}.mat-calendar-body-comparison-start.mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-start.mat-calendar-body-range-end:after,.mat-calendar-body-comparison-end.mat-calendar-body-range-start:after,[dir=rtl] .mat-calendar-body-comparison-end.mat-calendar-body-range-start:after{width:90%}.mat-calendar-body-in-preview .mat-calendar-body-cell-preview{border-top:dashed 1px;border-bottom:dashed 1px}.mat-calendar-body-preview-start .mat-calendar-body-cell-preview{border-left:dashed 1px}[dir=rtl] .mat-calendar-body-preview-start .mat-calendar-body-cell-preview{border-left:0;border-right:dashed 1px}.mat-calendar-body-preview-end .mat-calendar-body-cell-preview{border-right:dashed 1px}[dir=rtl] .mat-calendar-body-preview-end .mat-calendar-body-cell-preview{border-right:0;border-left:dashed 1px}.mat-calendar-body-disabled{cursor:default}.mat-calendar-body-cell-content{top:5%;left:5%;z-index:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:90%;height:90%;line-height:1;border-width:1px;border-style:solid;border-radius:999px}.mat-calendar-body-cell-content.mat-focus-indicator{position:absolute}.cdk-high-contrast-active .mat-calendar-body-cell-content{border:none}.cdk-high-contrast-active .mat-datepicker-popup:not(:empty),.cdk-high-contrast-active .mat-calendar-body-selected{outline:solid 1px}.cdk-high-contrast-active .mat-calendar-body-today{outline:dotted 1px}.cdk-high-contrast-active .cdk-keyboard-focused .mat-calendar-body-active>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected),.cdk-high-contrast-active .cdk-program-focused .mat-calendar-body-active>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected){outline:dotted 2px}[dir=rtl] .mat-calendar-body-label{text-align:right}@media (hover: none){.mat-calendar-body-cell:not(.mat-calendar-body-disabled):hover>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected){background-color:transparent}}\n"], dependencies: [{ kind: "directive", type: i1.NgClass, selector: "[ngClass]", inputs: ["class", "ngClass"] }, { kind: "directive", type: i1.NgForOf, selector: "[ngFor][ngForOf]", inputs: ["ngForOf", "ngForTrackBy", "ngForTemplate"] }, { kind: "directive", type: i1.NgIf, selector: "[ngIf]", inputs: ["ngIf", "ngIfThen", "ngIfElse"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatCalendarBody.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatCalendarBody, deps: [{ token: i0.ElementRef }, { token: i0.NgZone }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatCalendarBody.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: { label: "label", rows: "rows", todayValue: "todayValue", startValue: "startValue", endValue: "endValue", labelMinRequiredCells: "labelMinRequiredCells", numCols: "numCols", activeCell: "activeCell", isRange: "isRange", cellAspectRatio: "cellAspectRatio", comparisonStart: "comparisonStart", comparisonEnd: "comparisonEnd", previewStart: "previewStart", previewEnd: "previewEnd" }, outputs: { selectedValueChange: "selectedValueChange", previewChange: "previewChange" }, host: { attributes: { "role": "grid", "aria-readonly": "true" }, classAttribute: "ngx-mat-calendar-body" }, exportAs: ["NgxMatCalendarBody"], usesOnChanges: true, ngImport: i0, template: "<!--\r\n  If there's not enough space in the first row, create a separate label row. We mark this row as\r\n  aria-hidden because we don't want it to be read out as one of the weeks in the month.\r\n-->\r\n<tr *ngIf=\"_firstRowOffset < labelMinRequiredCells\" aria-hidden=\"true\">\r\n  <td class=\"mat-calendar-body-label\"\r\n      [attr.colspan]=\"numCols\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n    {{label}}\r\n  </td>\r\n</tr>\r\n\r\n<!-- Create the first row separately so we can include a special spacer cell. -->\r\n<tr *ngFor=\"let row of rows; let rowIndex = index\" role=\"row\">\r\n  <!--\r\n    We mark this cell as aria-hidden so it doesn't get read out as one of the days in the week.\r\n    The aspect ratio of the table cells is maintained by setting the top and bottom padding as a\r\n    percentage of the width (a variant of the trick described here:\r\n    https://www.w3schools.com/howto/howto_css_aspect_ratio.asp).\r\n  -->\r\n  <td *ngIf=\"rowIndex === 0 && _firstRowOffset\"\r\n      aria-hidden=\"true\"\r\n      class=\"mat-calendar-body-label\"\r\n      [attr.colspan]=\"_firstRowOffset\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n    {{_firstRowOffset >= labelMinRequiredCells ? label : ''}}\r\n  </td>\r\n  <td *ngFor=\"let item of row; let colIndex = index\"\r\n      role=\"gridcell\"\r\n      class=\"mat-calendar-body-cell\"\r\n      [ngClass]=\"item.cssClasses\"\r\n      [tabindex]=\"_isActiveCell(rowIndex, colIndex) ? 0 : -1\"\r\n      [attr.data-mat-row]=\"rowIndex\"\r\n      [attr.data-mat-col]=\"colIndex\"\r\n      [class.mat-calendar-body-disabled]=\"!item.enabled\"\r\n      [class.mat-calendar-body-active]=\"_isActiveCell(rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-range-start]=\"_isRangeStart(item.compareValue)\"\r\n      [class.mat-calendar-body-range-end]=\"_isRangeEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-range]=\"_isInRange(item.compareValue)\"\r\n      [class.mat-calendar-body-comparison-bridge-start]=\"_isComparisonBridgeStart(item.compareValue, rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-comparison-bridge-end]=\"_isComparisonBridgeEnd(item.compareValue, rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-comparison-start]=\"_isComparisonStart(item.compareValue)\"\r\n      [class.mat-calendar-body-comparison-end]=\"_isComparisonEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-comparison-range]=\"_isInComparisonRange(item.compareValue)\"\r\n      [class.mat-calendar-body-preview-start]=\"_isPreviewStart(item.compareValue)\"\r\n      [class.mat-calendar-body-preview-end]=\"_isPreviewEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-preview]=\"_isInPreview(item.compareValue)\"\r\n      [attr.aria-label]=\"item.ariaLabel\"\r\n      [attr.aria-disabled]=\"!item.enabled || null\"\r\n      [attr.aria-selected]=\"_isSelected(item)\"\r\n      (click)=\"_cellClicked(item, $event)\"\r\n      [style.width]=\"_cellWidth\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n      <div class=\"mat-calendar-body-cell-content mat-focus-indicator\"\r\n        [class.mat-calendar-body-selected]=\"_isSelected(item)\"\r\n        [class.mat-calendar-body-today]=\"todayValue === item.compareValue\">\r\n        {{item.displayValue}}\r\n      </div>\r\n      <div class=\"mat-calendar-body-cell-preview\"></div>\r\n  </td>\r\n</tr>\r\n<tr *ngIf=\"_showPaddedRow\" aria-hidden=\"true\">\r\n  <td [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n  </td>\r\n</tr>", styles: [".mat-calendar-body{min-width:224px}.mat-calendar-body-label{height:0;line-height:0;text-align:left;padding-left:4.7142857143%;padding-right:4.7142857143%}.mat-calendar-body-cell{position:relative;height:0;line-height:0;text-align:center;outline:none;cursor:pointer}.mat-calendar-body-cell:before,.mat-calendar-body-cell:after,.mat-calendar-body-cell-preview{content:\"\";position:absolute;top:5%;left:0;z-index:0;box-sizing:border-box;height:90%;width:100%}.mat-calendar-body-range-start:not(.mat-calendar-body-in-comparison-range):before,.mat-calendar-body-range-start:after,.mat-calendar-body-comparison-start:not(.mat-calendar-body-comparison-bridge-start):before,.mat-calendar-body-comparison-start:after,.mat-calendar-body-preview-start .mat-calendar-body-cell-preview{left:5%;width:95%;border-top-left-radius:999px;border-bottom-left-radius:999px}[dir=rtl] .mat-calendar-body-range-start:not(.mat-calendar-body-in-comparison-range):before,[dir=rtl] .mat-calendar-body-range-start:after,[dir=rtl] .mat-calendar-body-comparison-start:not(.mat-calendar-body-comparison-bridge-start):before,[dir=rtl] .mat-calendar-body-comparison-start:after,[dir=rtl] .mat-calendar-body-preview-start .mat-calendar-body-cell-preview{left:0;border-radius:0 999px 999px 0}.mat-calendar-body-range-end:not(.mat-calendar-body-in-comparison-range):before,.mat-calendar-body-range-end:after,.mat-calendar-body-comparison-end:not(.mat-calendar-body-comparison-bridge-end):before,.mat-calendar-body-comparison-end:after,.mat-calendar-body-preview-end .mat-calendar-body-cell-preview{width:95%;border-top-right-radius:999px;border-bottom-right-radius:999px}[dir=rtl] .mat-calendar-body-range-end:not(.mat-calendar-body-in-comparison-range):before,[dir=rtl] .mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-end:not(.mat-calendar-body-comparison-bridge-end):before,[dir=rtl] .mat-calendar-body-comparison-end:after,[dir=rtl] .mat-calendar-body-preview-end .mat-calendar-body-cell-preview{left:5%;border-radius:999px 0 0 999px}[dir=rtl] .mat-calendar-body-comparison-bridge-start.mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-bridge-end.mat-calendar-body-range-start:after{width:95%;border-top-right-radius:999px;border-bottom-right-radius:999px}.mat-calendar-body-comparison-start.mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-start.mat-calendar-body-range-end:after,.mat-calendar-body-comparison-end.mat-calendar-body-range-start:after,[dir=rtl] .mat-calendar-body-comparison-end.mat-calendar-body-range-start:after{width:90%}.mat-calendar-body-in-preview .mat-calendar-body-cell-preview{border-top:dashed 1px;border-bottom:dashed 1px}.mat-calendar-body-preview-start .mat-calendar-body-cell-preview{border-left:dashed 1px}[dir=rtl] .mat-calendar-body-preview-start .mat-calendar-body-cell-preview{border-left:0;border-right:dashed 1px}.mat-calendar-body-preview-end .mat-calendar-body-cell-preview{border-right:dashed 1px}[dir=rtl] .mat-calendar-body-preview-end .mat-calendar-body-cell-preview{border-right:0;border-left:dashed 1px}.mat-calendar-body-disabled{cursor:default}.mat-calendar-body-cell-content{top:5%;left:5%;z-index:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:90%;height:90%;line-height:1;border-width:1px;border-style:solid;border-radius:999px}.mat-calendar-body-cell-content.mat-focus-indicator{position:absolute}.cdk-high-contrast-active .mat-calendar-body-cell-content{border:none}.cdk-high-contrast-active .mat-datepicker-popup:not(:empty),.cdk-high-contrast-active .mat-calendar-body-selected{outline:solid 1px}.cdk-high-contrast-active .mat-calendar-body-today{outline:dotted 1px}.cdk-high-contrast-active .cdk-keyboard-focused .mat-calendar-body-active>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected),.cdk-high-contrast-active .cdk-program-focused .mat-calendar-body-active>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected){outline:dotted 2px}[dir=rtl] .mat-calendar-body-label{text-align:right}@media (hover: none){.mat-calendar-body-cell:not(.mat-calendar-body-disabled):hover>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected){background-color:transparent}}\n"], directives: [{ type: i1.NgIf, selector: "[ngIf]", inputs: ["ngIf", "ngIfThen", "ngIfElse"] }, { type: i1.NgForOf, selector: "[ngFor][ngForOf]", inputs: ["ngForOf", "ngForTrackBy", "ngForTemplate"] }, { type: i1.NgClass, selector: "[ngClass]", inputs: ["class", "ngClass"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatCalendarBody, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatCalendarBody, decorators: [{
             type: Component,
             args: [{ selector: '[ngx-mat-calendar-body]', host: {
                         'class': 'ngx-mat-calendar-body',
                         'role': 'grid',
                         'aria-readonly': 'true'
                     }, exportAs: 'NgxMatCalendarBody', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "<!--\r\n  If there's not enough space in the first row, create a separate label row. We mark this row as\r\n  aria-hidden because we don't want it to be read out as one of the weeks in the month.\r\n-->\r\n<tr *ngIf=\"_firstRowOffset < labelMinRequiredCells\" aria-hidden=\"true\">\r\n  <td class=\"mat-calendar-body-label\"\r\n      [attr.colspan]=\"numCols\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n    {{label}}\r\n  </td>\r\n</tr>\r\n\r\n<!-- Create the first row separately so we can include a special spacer cell. -->\r\n<tr *ngFor=\"let row of rows; let rowIndex = index\" role=\"row\">\r\n  <!--\r\n    We mark this cell as aria-hidden so it doesn't get read out as one of the days in the week.\r\n    The aspect ratio of the table cells is maintained by setting the top and bottom padding as a\r\n    percentage of the width (a variant of the trick described here:\r\n    https://www.w3schools.com/howto/howto_css_aspect_ratio.asp).\r\n  -->\r\n  <td *ngIf=\"rowIndex === 0 && _firstRowOffset\"\r\n      aria-hidden=\"true\"\r\n      class=\"mat-calendar-body-label\"\r\n      [attr.colspan]=\"_firstRowOffset\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n    {{_firstRowOffset >= labelMinRequiredCells ? label : ''}}\r\n  </td>\r\n  <td *ngFor=\"let item of row; let colIndex = index\"\r\n      role=\"gridcell\"\r\n      class=\"mat-calendar-body-cell\"\r\n      [ngClass]=\"item.cssClasses\"\r\n      [tabindex]=\"_isActiveCell(rowIndex, colIndex) ? 0 : -1\"\r\n      [attr.data-mat-row]=\"rowIndex\"\r\n      [attr.data-mat-col]=\"colIndex\"\r\n      [class.mat-calendar-body-disabled]=\"!item.enabled\"\r\n      [class.mat-calendar-body-active]=\"_isActiveCell(rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-range-start]=\"_isRangeStart(item.compareValue)\"\r\n      [class.mat-calendar-body-range-end]=\"_isRangeEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-range]=\"_isInRange(item.compareValue)\"\r\n      [class.mat-calendar-body-comparison-bridge-start]=\"_isComparisonBridgeStart(item.compareValue, rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-comparison-bridge-end]=\"_isComparisonBridgeEnd(item.compareValue, rowIndex, colIndex)\"\r\n      [class.mat-calendar-body-comparison-start]=\"_isComparisonStart(item.compareValue)\"\r\n      [class.mat-calendar-body-comparison-end]=\"_isComparisonEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-comparison-range]=\"_isInComparisonRange(item.compareValue)\"\r\n      [class.mat-calendar-body-preview-start]=\"_isPreviewStart(item.compareValue)\"\r\n      [class.mat-calendar-body-preview-end]=\"_isPreviewEnd(item.compareValue)\"\r\n      [class.mat-calendar-body-in-preview]=\"_isInPreview(item.compareValue)\"\r\n      [attr.aria-label]=\"item.ariaLabel\"\r\n      [attr.aria-disabled]=\"!item.enabled || null\"\r\n      [attr.aria-selected]=\"_isSelected(item)\"\r\n      (click)=\"_cellClicked(item, $event)\"\r\n      [style.width]=\"_cellWidth\"\r\n      [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n      <div class=\"mat-calendar-body-cell-content mat-focus-indicator\"\r\n        [class.mat-calendar-body-selected]=\"_isSelected(item)\"\r\n        [class.mat-calendar-body-today]=\"todayValue === item.compareValue\">\r\n        {{item.displayValue}}\r\n      </div>\r\n      <div class=\"mat-calendar-body-cell-preview\"></div>\r\n  </td>\r\n</tr>\r\n<tr *ngIf=\"_showPaddedRow\" aria-hidden=\"true\">\r\n  <td [style.paddingTop]=\"_cellPadding\"\r\n      [style.paddingBottom]=\"_cellPadding\">\r\n  </td>\r\n</tr>", styles: [".mat-calendar-body{min-width:224px}.mat-calendar-body-label{height:0;line-height:0;text-align:left;padding-left:4.7142857143%;padding-right:4.7142857143%}.mat-calendar-body-cell{position:relative;height:0;line-height:0;text-align:center;outline:none;cursor:pointer}.mat-calendar-body-cell:before,.mat-calendar-body-cell:after,.mat-calendar-body-cell-preview{content:\"\";position:absolute;top:5%;left:0;z-index:0;box-sizing:border-box;height:90%;width:100%}.mat-calendar-body-range-start:not(.mat-calendar-body-in-comparison-range):before,.mat-calendar-body-range-start:after,.mat-calendar-body-comparison-start:not(.mat-calendar-body-comparison-bridge-start):before,.mat-calendar-body-comparison-start:after,.mat-calendar-body-preview-start .mat-calendar-body-cell-preview{left:5%;width:95%;border-top-left-radius:999px;border-bottom-left-radius:999px}[dir=rtl] .mat-calendar-body-range-start:not(.mat-calendar-body-in-comparison-range):before,[dir=rtl] .mat-calendar-body-range-start:after,[dir=rtl] .mat-calendar-body-comparison-start:not(.mat-calendar-body-comparison-bridge-start):before,[dir=rtl] .mat-calendar-body-comparison-start:after,[dir=rtl] .mat-calendar-body-preview-start .mat-calendar-body-cell-preview{left:0;border-radius:0 999px 999px 0}.mat-calendar-body-range-end:not(.mat-calendar-body-in-comparison-range):before,.mat-calendar-body-range-end:after,.mat-calendar-body-comparison-end:not(.mat-calendar-body-comparison-bridge-end):before,.mat-calendar-body-comparison-end:after,.mat-calendar-body-preview-end .mat-calendar-body-cell-preview{width:95%;border-top-right-radius:999px;border-bottom-right-radius:999px}[dir=rtl] .mat-calendar-body-range-end:not(.mat-calendar-body-in-comparison-range):before,[dir=rtl] .mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-end:not(.mat-calendar-body-comparison-bridge-end):before,[dir=rtl] .mat-calendar-body-comparison-end:after,[dir=rtl] .mat-calendar-body-preview-end .mat-calendar-body-cell-preview{left:5%;border-radius:999px 0 0 999px}[dir=rtl] .mat-calendar-body-comparison-bridge-start.mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-bridge-end.mat-calendar-body-range-start:after{width:95%;border-top-right-radius:999px;border-bottom-right-radius:999px}.mat-calendar-body-comparison-start.mat-calendar-body-range-end:after,[dir=rtl] .mat-calendar-body-comparison-start.mat-calendar-body-range-end:after,.mat-calendar-body-comparison-end.mat-calendar-body-range-start:after,[dir=rtl] .mat-calendar-body-comparison-end.mat-calendar-body-range-start:after{width:90%}.mat-calendar-body-in-preview .mat-calendar-body-cell-preview{border-top:dashed 1px;border-bottom:dashed 1px}.mat-calendar-body-preview-start .mat-calendar-body-cell-preview{border-left:dashed 1px}[dir=rtl] .mat-calendar-body-preview-start .mat-calendar-body-cell-preview{border-left:0;border-right:dashed 1px}.mat-calendar-body-preview-end .mat-calendar-body-cell-preview{border-right:dashed 1px}[dir=rtl] .mat-calendar-body-preview-end .mat-calendar-body-cell-preview{border-right:0;border-left:dashed 1px}.mat-calendar-body-disabled{cursor:default}.mat-calendar-body-cell-content{top:5%;left:5%;z-index:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:90%;height:90%;line-height:1;border-width:1px;border-style:solid;border-radius:999px}.mat-calendar-body-cell-content.mat-focus-indicator{position:absolute}.cdk-high-contrast-active .mat-calendar-body-cell-content{border:none}.cdk-high-contrast-active .mat-datepicker-popup:not(:empty),.cdk-high-contrast-active .mat-calendar-body-selected{outline:solid 1px}.cdk-high-contrast-active .mat-calendar-body-today{outline:dotted 1px}.cdk-high-contrast-active .cdk-keyboard-focused .mat-calendar-body-active>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected),.cdk-high-contrast-active .cdk-program-focused .mat-calendar-body-active>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected){outline:dotted 2px}[dir=rtl] .mat-calendar-body-label{text-align:right}@media (hover: none){.mat-calendar-body-cell:not(.mat-calendar-body-disabled):hover>.mat-calendar-body-cell-content:not(.mat-calendar-body-selected){background-color:transparent}}\n"] }]
-        }], ctorParameters: function () { return [{ type: i0.ElementRef }, { type: i0.NgZone }]; }, propDecorators: { label: [{
+        }], ctorParameters: () => [{ type: i0.ElementRef }, { type: i0.NgZone }], propDecorators: { label: [{
                 type: Input
             }], rows: [{
                 type: Input
@@ -385,6 +423,7 @@ class NgxMatDateAdapter extends DateAdapter {
 const NGX_MAT_DATE_RANGE_SELECTION_STRATEGY = new InjectionToken('NGX_MAT_DATE_RANGE_SELECTION_STRATEGY');
 /** Provides the default date range selection behavior. */
 class DefaultNgxMatCalendarRangeStrategy {
+    _dateAdapter;
     constructor(_dateAdapter) {
         this._dateAdapter = _dateAdapter;
     }
@@ -411,12 +450,12 @@ class DefaultNgxMatCalendarRangeStrategy {
         }
         return new DateRange(start, end);
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: DefaultNgxMatCalendarRangeStrategy, deps: [{ token: NgxMatDateAdapter }], target: i0.ɵɵFactoryTarget.Injectable });
+    /** @nocollapse */ static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: DefaultNgxMatCalendarRangeStrategy });
 }
-/** @nocollapse */ /** @nocollapse */ DefaultNgxMatCalendarRangeStrategy.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: DefaultNgxMatCalendarRangeStrategy, deps: [{ token: NgxMatDateAdapter }], target: i0.ɵɵFactoryTarget.Injectable });
-/** @nocollapse */ /** @nocollapse */ DefaultNgxMatCalendarRangeStrategy.ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: DefaultNgxMatCalendarRangeStrategy });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: DefaultNgxMatCalendarRangeStrategy, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: DefaultNgxMatCalendarRangeStrategy, decorators: [{
             type: Injectable
-        }], ctorParameters: function () { return [{ type: NgxMatDateAdapter }]; } });
+        }], ctorParameters: () => [{ type: NgxMatDateAdapter }] });
 
 const LIMIT_TIMES = {
     minHour: 0,
@@ -463,27 +502,12 @@ const DAYS_PER_WEEK = 7;
  * @docs-private
  */
 class NgxMatMonthView {
-    constructor(_changeDetectorRef, _dateFormats, _dateAdapter, _dir, _rangeStrategy) {
-        this._changeDetectorRef = _changeDetectorRef;
-        this._dateFormats = _dateFormats;
-        this._dateAdapter = _dateAdapter;
-        this._dir = _dir;
-        this._rangeStrategy = _rangeStrategy;
-        this._rerenderSubscription = Subscription.EMPTY;
-        /** Emits when a new date is selected. */
-        this.selectedChange = new EventEmitter();
-        /** Emits when any date is selected. */
-        this._userSelection = new EventEmitter();
-        /** Emits when any date is activated. */
-        this.activeDateChange = new EventEmitter();
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxMatDateAdapter');
-        }
-        if (!this._dateFormats) {
-            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
-        }
-        this._activeDate = this._dateAdapter.today();
-    }
+    _changeDetectorRef;
+    _dateFormats;
+    _dateAdapter;
+    _dir;
+    _rangeStrategy;
+    _rerenderSubscription = Subscription.EMPTY;
     /**
      * The date to display in this month view (everything other than the month and year is ignored).
      */
@@ -496,6 +520,7 @@ class NgxMatMonthView {
             this._init();
         }
     }
+    _activeDate;
     /** The currently selected date. */
     get selected() { return this._selected; }
     set selected(value) {
@@ -507,15 +532,72 @@ class NgxMatMonthView {
         }
         this._setRanges(this._selected);
     }
+    _selected;
     /** The minimum selectable date. */
     get minDate() { return this._minDate; }
     set minDate(value) {
         this._minDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _minDate;
     /** The maximum selectable date. */
     get maxDate() { return this._maxDate; }
     set maxDate(value) {
         this._maxDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
+    }
+    _maxDate;
+    /** Function used to filter which dates are selectable. */
+    dateFilter;
+    /** Function that can be used to add custom CSS classes to dates. */
+    dateClass;
+    /** Start of the comparison range. */
+    comparisonStart;
+    /** End of the comparison range. */
+    comparisonEnd;
+    /** Emits when a new date is selected. */
+    selectedChange = new EventEmitter();
+    /** Emits when any date is selected. */
+    _userSelection = new EventEmitter();
+    /** Emits when any date is activated. */
+    activeDateChange = new EventEmitter();
+    /** The body of calendar table */
+    _matCalendarBody;
+    /** The label for this month (e.g. "January 2017"). */
+    _monthLabel;
+    /** Grid of calendar cells representing the dates of the month. */
+    _weeks;
+    /** The number of blank cells in the first row before the 1st of the month. */
+    _firstWeekOffset;
+    /** Start value of the currently-shown date range. */
+    _rangeStart;
+    /** End value of the currently-shown date range. */
+    _rangeEnd;
+    /** Start value of the currently-shown comparison date range. */
+    _comparisonRangeStart;
+    /** End value of the currently-shown comparison date range. */
+    _comparisonRangeEnd;
+    /** Start of the preview range. */
+    _previewStart;
+    /** End of the preview range. */
+    _previewEnd;
+    /** Whether the user is currently selecting a range of dates. */
+    _isRange;
+    /** The date of the month that today falls on. Null if today is in another month. */
+    _todayDate;
+    /** The names of the weekdays. */
+    _weekdays;
+    constructor(_changeDetectorRef, _dateFormats, _dateAdapter, _dir, _rangeStrategy) {
+        this._changeDetectorRef = _changeDetectorRef;
+        this._dateFormats = _dateFormats;
+        this._dateAdapter = _dateAdapter;
+        this._dir = _dir;
+        this._rangeStrategy = _rangeStrategy;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxMatDateAdapter');
+        }
+        if (!this._dateFormats) {
+            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
+        }
+        this._activeDate = this._dateAdapter.today();
     }
     ngAfterContentInit() {
         this._rerenderSubscription = this._dateAdapter.localeChanges
@@ -731,13 +813,13 @@ class NgxMatMonthView {
         this._comparisonRangeStart = this._getCellCompareValue(this.comparisonStart);
         this._comparisonRangeEnd = this._getCellCompareValue(this.comparisonEnd);
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatMonthView, deps: [{ token: i0.ChangeDetectorRef }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }, { token: NGX_MAT_DATE_RANGE_SELECTION_STRATEGY, optional: true }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatMonthView, selector: "ngx-mat-month-view", inputs: { activeDate: "activeDate", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter", dateClass: "dateClass", comparisonStart: "comparisonStart", comparisonEnd: "comparisonEnd" }, outputs: { selectedChange: "selectedChange", _userSelection: "_userSelection", activeDateChange: "activeDateChange" }, viewQueries: [{ propertyName: "_matCalendarBody", first: true, predicate: NgxMatCalendarBody, descendants: true }], exportAs: ["ngxMatMonthView"], ngImport: i0, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr>\r\n      <th scope=\"col\" *ngFor=\"let day of _weekdays\" [attr.aria-label]=\"day.long\">{{day.narrow}}</th>\r\n    </tr>\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"7\" aria-hidden=\"true\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [label]=\"_monthLabel\"\r\n         [rows]=\"_weeks\"\r\n         [todayValue]=\"_todayDate!\"\r\n         [startValue]=\"_rangeStart!\"\r\n         [endValue]=\"_rangeEnd!\"\r\n         [comparisonStart]=\"_comparisonRangeStart\"\r\n         [comparisonEnd]=\"_comparisonRangeEnd\"\r\n         [previewStart]=\"_previewStart\"\r\n         [previewEnd]=\"_previewEnd\"\r\n         [isRange]=\"_isRange\"\r\n         [labelMinRequiredCells]=\"3\"\r\n         [activeCell]=\"_dateAdapter.getDate(activeDate) - 1\"\r\n         (selectedValueChange)=\"_dateSelected($event)\"\r\n         (previewChange)=\"_previewChanged($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n", dependencies: [{ kind: "directive", type: i1.NgForOf, selector: "[ngFor][ngForOf]", inputs: ["ngForOf", "ngForTrackBy", "ngForTemplate"] }, { kind: "component", type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: ["label", "rows", "todayValue", "startValue", "endValue", "labelMinRequiredCells", "numCols", "activeCell", "isRange", "cellAspectRatio", "comparisonStart", "comparisonEnd", "previewStart", "previewEnd"], outputs: ["selectedValueChange", "previewChange"], exportAs: ["NgxMatCalendarBody"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatMonthView.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatMonthView, deps: [{ token: i0.ChangeDetectorRef }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }, { token: NGX_MAT_DATE_RANGE_SELECTION_STRATEGY, optional: true }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatMonthView.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatMonthView, selector: "ngx-mat-month-view", inputs: { activeDate: "activeDate", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter", dateClass: "dateClass", comparisonStart: "comparisonStart", comparisonEnd: "comparisonEnd" }, outputs: { selectedChange: "selectedChange", _userSelection: "_userSelection", activeDateChange: "activeDateChange" }, viewQueries: [{ propertyName: "_matCalendarBody", first: true, predicate: NgxMatCalendarBody, descendants: true }], exportAs: ["ngxMatMonthView"], ngImport: i0, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr>\r\n      <th scope=\"col\" *ngFor=\"let day of _weekdays\" [attr.aria-label]=\"day.long\">{{day.narrow}}</th>\r\n    </tr>\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"7\" aria-hidden=\"true\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [label]=\"_monthLabel\"\r\n         [rows]=\"_weeks\"\r\n         [todayValue]=\"_todayDate!\"\r\n         [startValue]=\"_rangeStart!\"\r\n         [endValue]=\"_rangeEnd!\"\r\n         [comparisonStart]=\"_comparisonRangeStart\"\r\n         [comparisonEnd]=\"_comparisonRangeEnd\"\r\n         [previewStart]=\"_previewStart\"\r\n         [previewEnd]=\"_previewEnd\"\r\n         [isRange]=\"_isRange\"\r\n         [labelMinRequiredCells]=\"3\"\r\n         [activeCell]=\"_dateAdapter.getDate(activeDate) - 1\"\r\n         (selectedValueChange)=\"_dateSelected($event)\"\r\n         (previewChange)=\"_previewChanged($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n", components: [{ type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: ["label", "rows", "todayValue", "startValue", "endValue", "labelMinRequiredCells", "numCols", "activeCell", "isRange", "cellAspectRatio", "comparisonStart", "comparisonEnd", "previewStart", "previewEnd"], outputs: ["selectedValueChange", "previewChange"], exportAs: ["NgxMatCalendarBody"] }], directives: [{ type: i1.NgForOf, selector: "[ngFor][ngForOf]", inputs: ["ngForOf", "ngForTrackBy", "ngForTemplate"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatMonthView, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatMonthView, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-month-view', exportAs: 'ngxMatMonthView', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr>\r\n      <th scope=\"col\" *ngFor=\"let day of _weekdays\" [attr.aria-label]=\"day.long\">{{day.narrow}}</th>\r\n    </tr>\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"7\" aria-hidden=\"true\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [label]=\"_monthLabel\"\r\n         [rows]=\"_weeks\"\r\n         [todayValue]=\"_todayDate!\"\r\n         [startValue]=\"_rangeStart!\"\r\n         [endValue]=\"_rangeEnd!\"\r\n         [comparisonStart]=\"_comparisonRangeStart\"\r\n         [comparisonEnd]=\"_comparisonRangeEnd\"\r\n         [previewStart]=\"_previewStart\"\r\n         [previewEnd]=\"_previewEnd\"\r\n         [isRange]=\"_isRange\"\r\n         [labelMinRequiredCells]=\"3\"\r\n         [activeCell]=\"_dateAdapter.getDate(activeDate) - 1\"\r\n         (selectedValueChange)=\"_dateSelected($event)\"\r\n         (previewChange)=\"_previewChanged($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n" }]
-        }], ctorParameters: function () { return [{ type: i0.ChangeDetectorRef }, { type: undefined, decorators: [{
+        }], ctorParameters: () => [{ type: i0.ChangeDetectorRef }, { type: undefined, decorators: [{
                     type: Optional
                 }, {
                     type: Inject,
@@ -751,7 +833,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                     args: [NGX_MAT_DATE_RANGE_SELECTION_STRATEGY]
                 }, {
                     type: Optional
-                }] }]; }, propDecorators: { activeDate: [{
+                }] }], propDecorators: { activeDate: [{
                 type: Input
             }], selected: [{
                 type: Input
@@ -792,22 +874,10 @@ const yearsPerRow = 4;
  * @docs-private
  */
 class NgxMatMultiYearView {
-    constructor(_changeDetectorRef, _dateAdapter, _dir) {
-        this._changeDetectorRef = _changeDetectorRef;
-        this._dateAdapter = _dateAdapter;
-        this._dir = _dir;
-        this._rerenderSubscription = Subscription.EMPTY;
-        /** Emits when a new year is selected. */
-        this.selectedChange = new EventEmitter();
-        /** Emits the selected year. This doesn't imply a change on the selected date */
-        this.yearSelected = new EventEmitter();
-        /** Emits when any date is activated. */
-        this.activeDateChange = new EventEmitter();
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxMatDateAdapter');
-        }
-        this._activeDate = this._dateAdapter.today();
-    }
+    _changeDetectorRef;
+    _dateAdapter;
+    _dir;
+    _rerenderSubscription = Subscription.EMPTY;
     /** The date to display in this multi-year view (everything other than the year is ignored). */
     get activeDate() { return this._activeDate; }
     set activeDate(value) {
@@ -818,6 +888,7 @@ class NgxMatMultiYearView {
             this._init();
         }
     }
+    _activeDate;
     /** The currently selected date. */
     get selected() { return this._selected; }
     set selected(value) {
@@ -829,15 +900,43 @@ class NgxMatMultiYearView {
         }
         this._setSelectedYear(value);
     }
+    _selected;
     /** The minimum selectable date. */
     get minDate() { return this._minDate; }
     set minDate(value) {
         this._minDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _minDate;
     /** The maximum selectable date. */
     get maxDate() { return this._maxDate; }
     set maxDate(value) {
         this._maxDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
+    }
+    _maxDate;
+    /** A function used to filter which dates are selectable. */
+    dateFilter;
+    /** Emits when a new year is selected. */
+    selectedChange = new EventEmitter();
+    /** Emits the selected year. This doesn't imply a change on the selected date */
+    yearSelected = new EventEmitter();
+    /** Emits when any date is activated. */
+    activeDateChange = new EventEmitter();
+    /** The body of calendar table */
+    _matCalendarBody;
+    /** Grid of calendar cells representing the currently displayed years. */
+    _years;
+    /** The year that today falls on. */
+    _todayYear;
+    /** The year of the selected date. Null if the selected date is null. */
+    _selectedYear;
+    constructor(_changeDetectorRef, _dateAdapter, _dir) {
+        this._changeDetectorRef = _changeDetectorRef;
+        this._dateAdapter = _dateAdapter;
+        this._dir = _dir;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxMatDateAdapter');
+        }
+        this._activeDate = this._dateAdapter.today();
     }
     ngAfterContentInit() {
         this._rerenderSubscription = this._dateAdapter.localeChanges
@@ -978,17 +1077,17 @@ class NgxMatMultiYearView {
             this._selectedYear = this._dateAdapter.getYear(value);
         }
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatMultiYearView, deps: [{ token: i0.ChangeDetectorRef }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatMultiYearView, selector: "ngx-mat-multi-year-view", inputs: { activeDate: "activeDate", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter" }, outputs: { selectedChange: "selectedChange", yearSelected: "yearSelected", activeDateChange: "activeDateChange" }, viewQueries: [{ propertyName: "_matCalendarBody", first: true, predicate: NgxMatCalendarBody, descendants: true }], exportAs: ["ngxMatMultiYearView"], ngImport: i0, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"4\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [rows]=\"_years\"\r\n         [todayValue]=\"_todayYear\"\r\n         [startValue]=\"_selectedYear!\"\r\n         [endValue]=\"_selectedYear!\"\r\n         [numCols]=\"4\"\r\n         [cellAspectRatio]=\"4 / 7\"\r\n         [activeCell]=\"_getActiveCell()\"\r\n         (selectedValueChange)=\"_yearSelected($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n\r\n", dependencies: [{ kind: "component", type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: ["label", "rows", "todayValue", "startValue", "endValue", "labelMinRequiredCells", "numCols", "activeCell", "isRange", "cellAspectRatio", "comparisonStart", "comparisonEnd", "previewStart", "previewEnd"], outputs: ["selectedValueChange", "previewChange"], exportAs: ["NgxMatCalendarBody"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatMultiYearView.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatMultiYearView, deps: [{ token: i0.ChangeDetectorRef }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatMultiYearView.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatMultiYearView, selector: "ngx-mat-multi-year-view", inputs: { activeDate: "activeDate", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter" }, outputs: { selectedChange: "selectedChange", yearSelected: "yearSelected", activeDateChange: "activeDateChange" }, viewQueries: [{ propertyName: "_matCalendarBody", first: true, predicate: NgxMatCalendarBody, descendants: true }], exportAs: ["ngxMatMultiYearView"], ngImport: i0, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"4\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [rows]=\"_years\"\r\n         [todayValue]=\"_todayYear\"\r\n         [startValue]=\"_selectedYear!\"\r\n         [endValue]=\"_selectedYear!\"\r\n         [numCols]=\"4\"\r\n         [cellAspectRatio]=\"4 / 7\"\r\n         [activeCell]=\"_getActiveCell()\"\r\n         (selectedValueChange)=\"_yearSelected($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n\r\n", components: [{ type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: ["label", "rows", "todayValue", "startValue", "endValue", "labelMinRequiredCells", "numCols", "activeCell", "isRange", "cellAspectRatio", "comparisonStart", "comparisonEnd", "previewStart", "previewEnd"], outputs: ["selectedValueChange", "previewChange"], exportAs: ["NgxMatCalendarBody"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatMultiYearView, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatMultiYearView, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-multi-year-view', exportAs: 'ngxMatMultiYearView', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"4\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [rows]=\"_years\"\r\n         [todayValue]=\"_todayYear\"\r\n         [startValue]=\"_selectedYear!\"\r\n         [endValue]=\"_selectedYear!\"\r\n         [numCols]=\"4\"\r\n         [cellAspectRatio]=\"4 / 7\"\r\n         [activeCell]=\"_getActiveCell()\"\r\n         (selectedValueChange)=\"_yearSelected($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n\r\n" }]
-        }], ctorParameters: function () { return [{ type: i0.ChangeDetectorRef }, { type: NgxMatDateAdapter, decorators: [{
+        }], ctorParameters: () => [{ type: i0.ChangeDetectorRef }, { type: NgxMatDateAdapter, decorators: [{
                     type: Optional
                 }] }, { type: i2.Directionality, decorators: [{
                     type: Optional
-                }] }]; }, propDecorators: { activeDate: [{
+                }] }], propDecorators: { activeDate: [{
                 type: Input
             }], selected: [{
                 type: Input
@@ -1056,26 +1155,11 @@ function euclideanModulo(a, b) {
  * @docs-private
  */
 class NgxMatYearView {
-    constructor(_changeDetectorRef, _dateFormats, _dateAdapter, _dir) {
-        this._changeDetectorRef = _changeDetectorRef;
-        this._dateFormats = _dateFormats;
-        this._dateAdapter = _dateAdapter;
-        this._dir = _dir;
-        this._rerenderSubscription = Subscription.EMPTY;
-        /** Emits when a new month is selected. */
-        this.selectedChange = new EventEmitter();
-        /** Emits the selected month. This doesn't imply a change on the selected date */
-        this.monthSelected = new EventEmitter();
-        /** Emits when any date is activated. */
-        this.activeDateChange = new EventEmitter();
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxMatDateAdapter');
-        }
-        if (!this._dateFormats) {
-            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
-        }
-        this._activeDate = this._dateAdapter.today();
-    }
+    _changeDetectorRef;
+    _dateFormats;
+    _dateAdapter;
+    _dir;
+    _rerenderSubscription = Subscription.EMPTY;
     /** The date to display in this year view (everything other than the year is ignored). */
     get activeDate() { return this._activeDate; }
     set activeDate(value) {
@@ -1086,6 +1170,7 @@ class NgxMatYearView {
             this._init();
         }
     }
+    _activeDate;
     /** The currently selected date. */
     get selected() { return this._selected; }
     set selected(value) {
@@ -1097,15 +1182,52 @@ class NgxMatYearView {
         }
         this._setSelectedMonth(value);
     }
+    _selected;
     /** The minimum selectable date. */
     get minDate() { return this._minDate; }
     set minDate(value) {
         this._minDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _minDate;
     /** The maximum selectable date. */
     get maxDate() { return this._maxDate; }
     set maxDate(value) {
         this._maxDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
+    }
+    _maxDate;
+    /** A function used to filter which dates are selectable. */
+    dateFilter;
+    /** Emits when a new month is selected. */
+    selectedChange = new EventEmitter();
+    /** Emits the selected month. This doesn't imply a change on the selected date */
+    monthSelected = new EventEmitter();
+    /** Emits when any date is activated. */
+    activeDateChange = new EventEmitter();
+    /** The body of calendar table */
+    _matCalendarBody;
+    /** Grid of calendar cells representing the months of the year. */
+    _months;
+    /** The label for this year (e.g. "2017"). */
+    _yearLabel;
+    /** The month in this year that today falls on. Null if today is in a different year. */
+    _todayMonth;
+    /**
+     * The month in this year that the selected Date falls on.
+     * Null if the selected Date is in a different year.
+     */
+    _selectedMonth;
+    constructor(_changeDetectorRef, _dateFormats, _dateAdapter, _dir) {
+        this._changeDetectorRef = _changeDetectorRef;
+        this._dateFormats = _dateFormats;
+        this._dateAdapter = _dateAdapter;
+        this._dir = _dir;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxMatDateAdapter');
+        }
+        if (!this._dateFormats) {
+            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
+        }
+        this._activeDate = this._dateAdapter.today();
     }
     ngAfterContentInit() {
         this._rerenderSubscription = this._dateAdapter.localeChanges
@@ -1264,13 +1386,13 @@ class NgxMatYearView {
             this._selectedMonth = this._getMonthInCurrentYear(value);
         }
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatYearView, deps: [{ token: i0.ChangeDetectorRef }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatYearView, selector: "ngx-mat-year-view", inputs: { activeDate: "activeDate", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter" }, outputs: { selectedChange: "selectedChange", monthSelected: "monthSelected", activeDateChange: "activeDateChange" }, viewQueries: [{ propertyName: "_matCalendarBody", first: true, predicate: NgxMatCalendarBody, descendants: true }], exportAs: ["ngxMatYearView"], ngImport: i0, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"4\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [label]=\"_yearLabel\"\r\n         [rows]=\"_months\"\r\n         [todayValue]=\"_todayMonth!\"\r\n         [startValue]=\"_selectedMonth!\"\r\n         [endValue]=\"_selectedMonth!\"\r\n         [labelMinRequiredCells]=\"2\"\r\n         [numCols]=\"4\"\r\n         [cellAspectRatio]=\"4 / 7\"\r\n         [activeCell]=\"_dateAdapter.getMonth(activeDate)\"\r\n         (selectedValueChange)=\"_monthSelected($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n", dependencies: [{ kind: "component", type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: ["label", "rows", "todayValue", "startValue", "endValue", "labelMinRequiredCells", "numCols", "activeCell", "isRange", "cellAspectRatio", "comparisonStart", "comparisonEnd", "previewStart", "previewEnd"], outputs: ["selectedValueChange", "previewChange"], exportAs: ["NgxMatCalendarBody"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatYearView.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatYearView, deps: [{ token: i0.ChangeDetectorRef }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatYearView.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatYearView, selector: "ngx-mat-year-view", inputs: { activeDate: "activeDate", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter" }, outputs: { selectedChange: "selectedChange", monthSelected: "monthSelected", activeDateChange: "activeDateChange" }, viewQueries: [{ propertyName: "_matCalendarBody", first: true, predicate: NgxMatCalendarBody, descendants: true }], exportAs: ["ngxMatYearView"], ngImport: i0, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"4\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [label]=\"_yearLabel\"\r\n         [rows]=\"_months\"\r\n         [todayValue]=\"_todayMonth!\"\r\n         [startValue]=\"_selectedMonth!\"\r\n         [endValue]=\"_selectedMonth!\"\r\n         [labelMinRequiredCells]=\"2\"\r\n         [numCols]=\"4\"\r\n         [cellAspectRatio]=\"4 / 7\"\r\n         [activeCell]=\"_dateAdapter.getMonth(activeDate)\"\r\n         (selectedValueChange)=\"_monthSelected($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n", components: [{ type: NgxMatCalendarBody, selector: "[ngx-mat-calendar-body]", inputs: ["label", "rows", "todayValue", "startValue", "endValue", "labelMinRequiredCells", "numCols", "activeCell", "isRange", "cellAspectRatio", "comparisonStart", "comparisonEnd", "previewStart", "previewEnd"], outputs: ["selectedValueChange", "previewChange"], exportAs: ["NgxMatCalendarBody"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatYearView, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatYearView, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-year-view', exportAs: 'ngxMatYearView', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "<table class=\"mat-calendar-table\" role=\"presentation\">\r\n  <thead class=\"mat-calendar-table-header\">\r\n    <tr><th class=\"mat-calendar-table-header-divider\" colspan=\"4\"></th></tr>\r\n  </thead>\r\n  <tbody ngx-mat-calendar-body\r\n         [label]=\"_yearLabel\"\r\n         [rows]=\"_months\"\r\n         [todayValue]=\"_todayMonth!\"\r\n         [startValue]=\"_selectedMonth!\"\r\n         [endValue]=\"_selectedMonth!\"\r\n         [labelMinRequiredCells]=\"2\"\r\n         [numCols]=\"4\"\r\n         [cellAspectRatio]=\"4 / 7\"\r\n         [activeCell]=\"_dateAdapter.getMonth(activeDate)\"\r\n         (selectedValueChange)=\"_monthSelected($event)\"\r\n         (keydown)=\"_handleCalendarBodyKeydown($event)\">\r\n  </tbody>\r\n</table>\r\n" }]
-        }], ctorParameters: function () { return [{ type: i0.ChangeDetectorRef }, { type: undefined, decorators: [{
+        }], ctorParameters: () => [{ type: i0.ChangeDetectorRef }, { type: undefined, decorators: [{
                     type: Optional
                 }, {
                     type: Inject,
@@ -1279,7 +1401,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                     type: Optional
                 }] }, { type: i2.Directionality, decorators: [{
                     type: Optional
-                }] }]; }, propDecorators: { activeDate: [{
+                }] }], propDecorators: { activeDate: [{
                 type: Input
             }], selected: [{
                 type: Input
@@ -1309,6 +1431,10 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
  */
 /** Default header for NgxMatCalendar */
 class NgxMatCalendarHeader {
+    _intl;
+    calendar;
+    _dateAdapter;
+    _dateFormats;
     constructor(_intl, calendar, _dateAdapter, _dateFormats, changeDetectorRef) {
         this._intl = _intl;
         this.calendar = calendar;
@@ -1397,13 +1523,13 @@ class NgxMatCalendarHeader {
         // Otherwise we are in 'multi-year' view.
         return isSameMultiYearView(this._dateAdapter, date1, date2, this.calendar.minDate, this.calendar.maxDate);
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatCalendarHeader, deps: [{ token: i1$1.MatDatepickerIntl }, { token: forwardRef(() => NgxMatCalendar) }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i0.ChangeDetectorRef }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatCalendarHeader, selector: "ngx-mat-calendar-header", exportAs: ["ngxMatCalendarHeader"], ngImport: i0, template: "<div class=\"mat-calendar-header\">\r\n  <div class=\"mat-calendar-controls\">\r\n    <button mat-button type=\"button\" class=\"mat-calendar-period-button\"\r\n            (click)=\"currentPeriodClicked()\" [attr.aria-label]=\"periodButtonLabel\"\r\n            cdkAriaLive=\"polite\">\r\n      {{periodButtonText}}\r\n      <div class=\"mat-calendar-arrow\"\r\n           [class.mat-calendar-invert]=\"calendar.currentView != 'month'\"></div>\r\n    </button>\r\n\r\n    <div class=\"mat-calendar-spacer\"></div>\r\n\r\n    <ng-content></ng-content>\r\n\r\n    <button mat-icon-button type=\"button\" class=\"mat-calendar-previous-button\"\r\n            [disabled]=\"!previousEnabled()\" (click)=\"previousClicked()\"\r\n            [attr.aria-label]=\"prevButtonLabel\">\r\n    </button>\r\n\r\n    <button mat-icon-button type=\"button\" class=\"mat-calendar-next-button\"\r\n            [disabled]=\"!nextEnabled()\" (click)=\"nextClicked()\"\r\n            [attr.aria-label]=\"nextButtonLabel\">\r\n    </button>\r\n  </div>\r\n</div>\r\n", dependencies: [{ kind: "component", type: i3.MatButton, selector: "    button[mat-button], button[mat-raised-button], button[mat-flat-button],    button[mat-stroked-button]  ", exportAs: ["matButton"] }, { kind: "component", type: i3.MatIconButton, selector: "button[mat-icon-button]", exportAs: ["matButton"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatCalendarHeader.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatCalendarHeader, deps: [{ token: i1$1.MatDatepickerIntl }, { token: forwardRef(() => NgxMatCalendar) }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i0.ChangeDetectorRef }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatCalendarHeader.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatCalendarHeader, selector: "ngx-mat-calendar-header", exportAs: ["ngxMatCalendarHeader"], ngImport: i0, template: "<div class=\"mat-calendar-header\">\r\n  <div class=\"mat-calendar-controls\">\r\n    <button mat-button type=\"button\" class=\"mat-calendar-period-button\"\r\n            (click)=\"currentPeriodClicked()\" [attr.aria-label]=\"periodButtonLabel\"\r\n            cdkAriaLive=\"polite\">\r\n      {{periodButtonText}}\r\n      <div class=\"mat-calendar-arrow\"\r\n           [class.mat-calendar-invert]=\"calendar.currentView != 'month'\"></div>\r\n    </button>\r\n\r\n    <div class=\"mat-calendar-spacer\"></div>\r\n\r\n    <ng-content></ng-content>\r\n\r\n    <button mat-icon-button type=\"button\" class=\"mat-calendar-previous-button\"\r\n            [disabled]=\"!previousEnabled()\" (click)=\"previousClicked()\"\r\n            [attr.aria-label]=\"prevButtonLabel\">\r\n    </button>\r\n\r\n    <button mat-icon-button type=\"button\" class=\"mat-calendar-next-button\"\r\n            [disabled]=\"!nextEnabled()\" (click)=\"nextClicked()\"\r\n            [attr.aria-label]=\"nextButtonLabel\">\r\n    </button>\r\n  </div>\r\n</div>\r\n", components: [{ type: i3.MatButton, selector: "button[mat-button], button[mat-raised-button], button[mat-icon-button],             button[mat-fab], button[mat-mini-fab], button[mat-stroked-button],             button[mat-flat-button]", inputs: ["disabled", "disableRipple", "color"], exportAs: ["matButton"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatCalendarHeader, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatCalendarHeader, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-calendar-header', exportAs: 'ngxMatCalendarHeader', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "<div class=\"mat-calendar-header\">\r\n  <div class=\"mat-calendar-controls\">\r\n    <button mat-button type=\"button\" class=\"mat-calendar-period-button\"\r\n            (click)=\"currentPeriodClicked()\" [attr.aria-label]=\"periodButtonLabel\"\r\n            cdkAriaLive=\"polite\">\r\n      {{periodButtonText}}\r\n      <div class=\"mat-calendar-arrow\"\r\n           [class.mat-calendar-invert]=\"calendar.currentView != 'month'\"></div>\r\n    </button>\r\n\r\n    <div class=\"mat-calendar-spacer\"></div>\r\n\r\n    <ng-content></ng-content>\r\n\r\n    <button mat-icon-button type=\"button\" class=\"mat-calendar-previous-button\"\r\n            [disabled]=\"!previousEnabled()\" (click)=\"previousClicked()\"\r\n            [attr.aria-label]=\"prevButtonLabel\">\r\n    </button>\r\n\r\n    <button mat-icon-button type=\"button\" class=\"mat-calendar-next-button\"\r\n            [disabled]=\"!nextEnabled()\" (click)=\"nextClicked()\"\r\n            [attr.aria-label]=\"nextButtonLabel\">\r\n    </button>\r\n  </div>\r\n</div>\r\n" }]
-        }], ctorParameters: function () { return [{ type: i1$1.MatDatepickerIntl }, { type: NgxMatCalendar, decorators: [{
+        }], ctorParameters: () => [{ type: i1$1.MatDatepickerIntl }, { type: NgxMatCalendar, decorators: [{
                     type: Inject,
                     args: [forwardRef(() => NgxMatCalendar)]
                 }] }, { type: NgxMatDateAdapter, decorators: [{
@@ -1413,73 +1539,76 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                 }, {
                     type: Inject,
                     args: [NGX_MAT_DATE_FORMATS]
-                }] }, { type: i0.ChangeDetectorRef }]; } });
+                }] }, { type: i0.ChangeDetectorRef }] });
 /**
  * A calendar that is used as part of the datepicker.
  * @docs-private
  */
 class NgxMatCalendar {
-    constructor(_intl, _dateAdapter, _dateFormats, _changeDetectorRef) {
-        this._dateAdapter = _dateAdapter;
-        this._dateFormats = _dateFormats;
-        this._changeDetectorRef = _changeDetectorRef;
-        /**
-         * Used for scheduling that focus should be moved to the active cell on the next tick.
-         * We need to schedule it, rather than do it immediately, because we have to wait
-         * for Angular to re-evaluate the view children.
-         */
-        this._moveFocusOnNextTick = false;
-        /** Whether the calendar should be started in month or year view. */
-        this.startView = 'month';
-        /** Emits when the currently selected date changes. */
-        this.selectedChange = new EventEmitter();
-        /**
-         * Emits the year chosen in multiyear view.
-         * This doesn't imply a change on the selected date.
-         */
-        this.yearSelected = new EventEmitter();
-        /**
-         * Emits the month chosen in year view.
-         * This doesn't imply a change on the selected date.
-         */
-        this.monthSelected = new EventEmitter();
-        /** Emits when any date is selected. */
-        this._userSelection = new EventEmitter();
-        /**
-         * Emits whenever there is a state change that the header may need to respond to.
-         */
-        this.stateChanges = new Subject();
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxDateAdapter');
-        }
-        if (!this._dateFormats) {
-            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
-        }
-        this._intlChanges = _intl.changes.subscribe(() => {
-            _changeDetectorRef.markForCheck();
-            this.stateChanges.next();
-        });
-    }
+    _dateAdapter;
+    _dateFormats;
+    _changeDetectorRef;
+    /** An input indicating the type of the header component, if set. */
+    headerComponent;
+    /** A portal containing the header component type for this calendar. */
+    _calendarHeaderPortal;
+    _intlChanges;
+    /**
+     * Used for scheduling that focus should be moved to the active cell on the next tick.
+     * We need to schedule it, rather than do it immediately, because we have to wait
+     * for Angular to re-evaluate the view children.
+     */
+    _moveFocusOnNextTick = false;
     /** A date representing the period (month or year) to start the calendar in. */
     get startAt() { return this._startAt; }
     set startAt(value) {
         this._startAt = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _startAt;
+    /** Whether the calendar should be started in month or year view. */
+    startView = 'month';
     /** The currently selected date. */
     get selected() { return this._selected; }
     set selected(value) {
         this._selected = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _selected;
     /** The minimum selectable date. */
     get minDate() { return this._minDate; }
     set minDate(value) {
         this._minDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _minDate;
     /** The maximum selectable date. */
     get maxDate() { return this._maxDate; }
     set maxDate(value) {
         this._maxDate = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _maxDate;
+    /** Function used to filter which dates are selectable. */
+    dateFilter;
+    /** Function that can be used to add custom CSS classes to dates. */
+    dateClass;
+    /** Emits when the currently selected date changes. */
+    selectedChange = new EventEmitter();
+    /**
+     * Emits the year chosen in multiyear view.
+     * This doesn't imply a change on the selected date.
+     */
+    yearSelected = new EventEmitter();
+    /**
+     * Emits the month chosen in year view.
+     * This doesn't imply a change on the selected date.
+     */
+    monthSelected = new EventEmitter();
+    /** Emits when any date is selected. */
+    _userSelection = new EventEmitter();
+    /** Reference to the current month view component. */
+    monthView;
+    /** Reference to the current year view component. */
+    yearView;
+    /** Reference to the current multi-year view component. */
+    multiYearView;
     /**
      * The current active date. This determines which time period is shown and which date is
      * highlighted when using keyboard navigation.
@@ -1490,12 +1619,33 @@ class NgxMatCalendar {
         this.stateChanges.next();
         this._changeDetectorRef.markForCheck();
     }
+    _clampedActiveDate;
     /** Whether the calendar is in month view. */
     get currentView() { return this._currentView; }
     set currentView(value) {
         this._currentView = value;
         this._moveFocusOnNextTick = true;
         this._changeDetectorRef.markForCheck();
+    }
+    _currentView;
+    /**
+     * Emits whenever there is a state change that the header may need to respond to.
+     */
+    stateChanges = new Subject();
+    constructor(_intl, _dateAdapter, _dateFormats, _changeDetectorRef) {
+        this._dateAdapter = _dateAdapter;
+        this._dateFormats = _dateFormats;
+        this._changeDetectorRef = _changeDetectorRef;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxDateAdapter');
+        }
+        if (!this._dateFormats) {
+            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
+        }
+        this._intlChanges = _intl.changes.subscribe(() => {
+            _changeDetectorRef.markForCheck();
+            this.stateChanges.next();
+        });
     }
     ngAfterContentInit() {
         this._calendarHeaderPortal = new ComponentPortal(this.headerComponent || NgxMatCalendarHeader);
@@ -1568,22 +1718,22 @@ class NgxMatCalendar {
     _getCurrentViewComponent() {
         return this.monthView || this.yearView || this.multiYearView;
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatCalendar, deps: [{ token: i1$1.MatDatepickerIntl }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i0.ChangeDetectorRef }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatCalendar, selector: "ngx-mat-calendar", inputs: { headerComponent: "headerComponent", startAt: "startAt", startView: "startView", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter", dateClass: "dateClass" }, outputs: { selectedChange: "selectedChange", yearSelected: "yearSelected", monthSelected: "monthSelected", _userSelection: "_userSelection" }, host: { classAttribute: "mat-calendar" }, viewQueries: [{ propertyName: "monthView", first: true, predicate: NgxMatMonthView, descendants: true }, { propertyName: "yearView", first: true, predicate: NgxMatYearView, descendants: true }, { propertyName: "multiYearView", first: true, predicate: NgxMatMultiYearView, descendants: true }], exportAs: ["ngxMatCalendar"], usesOnChanges: true, ngImport: i0, template: "\r\n<ng-template [cdkPortalOutlet]=\"_calendarHeaderPortal\"></ng-template>\r\n\r\n<div class=\"mat-calendar-content\" [ngSwitch]=\"currentView\" cdkMonitorSubtreeFocus tabindex=\"-1\">\r\n  <ngx-mat-month-view\r\n      *ngSwitchCase=\"'month'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      [dateClass]=\"dateClass\"\r\n      (selectedChange)=\"_dateSelected($event)\"\r\n      (_userSelection)=\"_userSelected()\">\r\n  </ngx-mat-month-view>\r\n\r\n  <ngx-mat-year-view\r\n      *ngSwitchCase=\"'year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (monthSelected)=\"_monthSelectedInYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'month')\">\r\n  </ngx-mat-year-view>\r\n\r\n  <ngx-mat-multi-year-view\r\n      *ngSwitchCase=\"'multi-year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (yearSelected)=\"_yearSelectedInMultiYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'year')\">\r\n  </ngx-mat-multi-year-view>\r\n</div>\r\n", styles: [".mat-calendar{display:block}.mat-calendar-header{padding:8px 8px 0}.mat-calendar-content{padding:0 8px 8px;outline:none}.mat-calendar-controls{display:flex;margin:5% calc(4.7142857143% - 16px)}.mat-calendar-spacer{flex:1 1 auto}.mat-calendar-period-button{min-width:0;background-color:unset}.mat-calendar-arrow{display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top-width:5px;border-top-style:solid;margin:0 0 0 5px;vertical-align:middle}.mat-calendar-arrow.mat-calendar-invert{transform:rotate(180deg)}[dir=rtl] .mat-calendar-arrow{margin:0 5px 0 0}.mat-calendar-previous-button,.mat-calendar-next-button{position:relative;background-color:unset}.mat-calendar-previous-button:after,.mat-calendar-next-button:after{inset:0;position:absolute;content:\"\";margin:15.5px;border:0 solid currentColor;border-top-width:2px}[dir=rtl] .mat-calendar-previous-button,[dir=rtl] .mat-calendar-next-button{transform:rotate(180deg)}.mat-calendar-previous-button:after{border-left-width:2px;transform:translate(2px) rotate(-45deg)}.mat-calendar-next-button:after{border-right-width:2px;transform:translate(-2px) rotate(45deg)}.mat-calendar-table{border-spacing:0;border-collapse:collapse;width:100%}.mat-calendar-table-header th{text-align:center;padding:0 0 8px}.mat-calendar-table-header-divider{position:relative;height:1px}.mat-calendar-table-header-divider:after{content:\"\";position:absolute;top:0;left:-8px;right:-8px;height:1px}\n"], dependencies: [{ kind: "directive", type: i1.NgSwitch, selector: "[ngSwitch]", inputs: ["ngSwitch"] }, { kind: "directive", type: i1.NgSwitchCase, selector: "[ngSwitchCase]", inputs: ["ngSwitchCase"] }, { kind: "directive", type: i5.CdkPortalOutlet, selector: "[cdkPortalOutlet]", inputs: ["cdkPortalOutlet"], outputs: ["attached"], exportAs: ["cdkPortalOutlet"] }, { kind: "component", type: NgxMatMonthView, selector: "ngx-mat-month-view", inputs: ["activeDate", "selected", "minDate", "maxDate", "dateFilter", "dateClass", "comparisonStart", "comparisonEnd"], outputs: ["selectedChange", "_userSelection", "activeDateChange"], exportAs: ["ngxMatMonthView"] }, { kind: "component", type: NgxMatYearView, selector: "ngx-mat-year-view", inputs: ["activeDate", "selected", "minDate", "maxDate", "dateFilter"], outputs: ["selectedChange", "monthSelected", "activeDateChange"], exportAs: ["ngxMatYearView"] }, { kind: "component", type: NgxMatMultiYearView, selector: "ngx-mat-multi-year-view", inputs: ["activeDate", "selected", "minDate", "maxDate", "dateFilter"], outputs: ["selectedChange", "yearSelected", "activeDateChange"], exportAs: ["ngxMatMultiYearView"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatCalendar.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatCalendar, deps: [{ token: i1$1.MatDatepickerIntl }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i0.ChangeDetectorRef }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatCalendar.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatCalendar, selector: "ngx-mat-calendar", inputs: { headerComponent: "headerComponent", startAt: "startAt", startView: "startView", selected: "selected", minDate: "minDate", maxDate: "maxDate", dateFilter: "dateFilter", dateClass: "dateClass" }, outputs: { selectedChange: "selectedChange", yearSelected: "yearSelected", monthSelected: "monthSelected", _userSelection: "_userSelection" }, host: { classAttribute: "mat-calendar" }, viewQueries: [{ propertyName: "monthView", first: true, predicate: NgxMatMonthView, descendants: true }, { propertyName: "yearView", first: true, predicate: NgxMatYearView, descendants: true }, { propertyName: "multiYearView", first: true, predicate: NgxMatMultiYearView, descendants: true }], exportAs: ["ngxMatCalendar"], usesOnChanges: true, ngImport: i0, template: "\r\n<ng-template [cdkPortalOutlet]=\"_calendarHeaderPortal\"></ng-template>\r\n\r\n<div class=\"mat-calendar-content\" [ngSwitch]=\"currentView\" cdkMonitorSubtreeFocus tabindex=\"-1\">\r\n  <ngx-mat-month-view\r\n      *ngSwitchCase=\"'month'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      [dateClass]=\"dateClass\"\r\n      (selectedChange)=\"_dateSelected($event)\"\r\n      (_userSelection)=\"_userSelected()\">\r\n  </ngx-mat-month-view>\r\n\r\n  <ngx-mat-year-view\r\n      *ngSwitchCase=\"'year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (monthSelected)=\"_monthSelectedInYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'month')\">\r\n  </ngx-mat-year-view>\r\n\r\n  <ngx-mat-multi-year-view\r\n      *ngSwitchCase=\"'multi-year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (yearSelected)=\"_yearSelectedInMultiYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'year')\">\r\n  </ngx-mat-multi-year-view>\r\n</div>\r\n", styles: [".mat-calendar{display:block}.mat-calendar-header{padding:8px 8px 0}.mat-calendar-content{padding:0 8px 8px;outline:none}.mat-calendar-controls{display:flex;margin:5% calc(4.71429% - 16px)}.mat-calendar-spacer{flex:1 1 auto}.mat-calendar-period-button{min-width:0}.mat-calendar-arrow{display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top-width:5px;border-top-style:solid;margin:0 0 0 5px;vertical-align:middle}.mat-calendar-arrow.mat-calendar-invert{transform:rotate(180deg)}[dir=rtl] .mat-calendar-arrow{margin:0 5px 0 0}.mat-calendar-previous-button,.mat-calendar-next-button{position:relative}.mat-calendar-previous-button:after,.mat-calendar-next-button:after{top:0;left:0;right:0;bottom:0;position:absolute;content:\"\";margin:15.5px;border:0 solid currentColor;border-top-width:2px}[dir=rtl] .mat-calendar-previous-button,[dir=rtl] .mat-calendar-next-button{transform:rotate(180deg)}.mat-calendar-previous-button:after{border-left-width:2px;transform:translate(2px) rotate(-45deg)}.mat-calendar-next-button:after{border-right-width:2px;transform:translate(-2px) rotate(45deg)}.mat-calendar-table{border-spacing:0;border-collapse:collapse;width:100%}.mat-calendar-table-header th{text-align:center;padding:0 0 8px}.mat-calendar-table-header-divider{position:relative;height:1px}.mat-calendar-table-header-divider:after{content:\"\";position:absolute;top:0;left:-8px;right:-8px;height:1px}\n"], components: [{ type: NgxMatMonthView, selector: "ngx-mat-month-view", inputs: ["activeDate", "selected", "minDate", "maxDate", "dateFilter", "dateClass", "comparisonStart", "comparisonEnd"], outputs: ["selectedChange", "_userSelection", "activeDateChange"], exportAs: ["ngxMatMonthView"] }, { type: NgxMatYearView, selector: "ngx-mat-year-view", inputs: ["activeDate", "selected", "minDate", "maxDate", "dateFilter"], outputs: ["selectedChange", "monthSelected", "activeDateChange"], exportAs: ["ngxMatYearView"] }, { type: NgxMatMultiYearView, selector: "ngx-mat-multi-year-view", inputs: ["activeDate", "selected", "minDate", "maxDate", "dateFilter"], outputs: ["selectedChange", "yearSelected", "activeDateChange"], exportAs: ["ngxMatMultiYearView"] }], directives: [{ type: i7.CdkPortalOutlet, selector: "[cdkPortalOutlet]", inputs: ["cdkPortalOutlet"], outputs: ["attached"], exportAs: ["cdkPortalOutlet"] }, { type: i1.NgSwitch, selector: "[ngSwitch]", inputs: ["ngSwitch"] }, { type: i1.NgSwitchCase, selector: "[ngSwitchCase]", inputs: ["ngSwitchCase"] }], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatCalendar, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatCalendar, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-calendar', host: {
                         'class': 'mat-calendar',
-                    }, exportAs: 'ngxMatCalendar', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "\r\n<ng-template [cdkPortalOutlet]=\"_calendarHeaderPortal\"></ng-template>\r\n\r\n<div class=\"mat-calendar-content\" [ngSwitch]=\"currentView\" cdkMonitorSubtreeFocus tabindex=\"-1\">\r\n  <ngx-mat-month-view\r\n      *ngSwitchCase=\"'month'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      [dateClass]=\"dateClass\"\r\n      (selectedChange)=\"_dateSelected($event)\"\r\n      (_userSelection)=\"_userSelected()\">\r\n  </ngx-mat-month-view>\r\n\r\n  <ngx-mat-year-view\r\n      *ngSwitchCase=\"'year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (monthSelected)=\"_monthSelectedInYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'month')\">\r\n  </ngx-mat-year-view>\r\n\r\n  <ngx-mat-multi-year-view\r\n      *ngSwitchCase=\"'multi-year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (yearSelected)=\"_yearSelectedInMultiYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'year')\">\r\n  </ngx-mat-multi-year-view>\r\n</div>\r\n", styles: [".mat-calendar{display:block}.mat-calendar-header{padding:8px 8px 0}.mat-calendar-content{padding:0 8px 8px;outline:none}.mat-calendar-controls{display:flex;margin:5% calc(4.71429% - 16px)}.mat-calendar-spacer{flex:1 1 auto}.mat-calendar-period-button{min-width:0}.mat-calendar-arrow{display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top-width:5px;border-top-style:solid;margin:0 0 0 5px;vertical-align:middle}.mat-calendar-arrow.mat-calendar-invert{transform:rotate(180deg)}[dir=rtl] .mat-calendar-arrow{margin:0 5px 0 0}.mat-calendar-previous-button,.mat-calendar-next-button{position:relative}.mat-calendar-previous-button:after,.mat-calendar-next-button:after{top:0;left:0;right:0;bottom:0;position:absolute;content:\"\";margin:15.5px;border:0 solid currentColor;border-top-width:2px}[dir=rtl] .mat-calendar-previous-button,[dir=rtl] .mat-calendar-next-button{transform:rotate(180deg)}.mat-calendar-previous-button:after{border-left-width:2px;transform:translate(2px) rotate(-45deg)}.mat-calendar-next-button:after{border-right-width:2px;transform:translate(-2px) rotate(45deg)}.mat-calendar-table{border-spacing:0;border-collapse:collapse;width:100%}.mat-calendar-table-header th{text-align:center;padding:0 0 8px}.mat-calendar-table-header-divider{position:relative;height:1px}.mat-calendar-table-header-divider:after{content:\"\";position:absolute;top:0;left:-8px;right:-8px;height:1px}\n"] }]
-        }], ctorParameters: function () { return [{ type: i1$1.MatDatepickerIntl }, { type: NgxMatDateAdapter, decorators: [{
+                    }, exportAs: 'ngxMatCalendar', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, template: "\r\n<ng-template [cdkPortalOutlet]=\"_calendarHeaderPortal\"></ng-template>\r\n\r\n<div class=\"mat-calendar-content\" [ngSwitch]=\"currentView\" cdkMonitorSubtreeFocus tabindex=\"-1\">\r\n  <ngx-mat-month-view\r\n      *ngSwitchCase=\"'month'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      [dateClass]=\"dateClass\"\r\n      (selectedChange)=\"_dateSelected($event)\"\r\n      (_userSelection)=\"_userSelected()\">\r\n  </ngx-mat-month-view>\r\n\r\n  <ngx-mat-year-view\r\n      *ngSwitchCase=\"'year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (monthSelected)=\"_monthSelectedInYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'month')\">\r\n  </ngx-mat-year-view>\r\n\r\n  <ngx-mat-multi-year-view\r\n      *ngSwitchCase=\"'multi-year'\"\r\n      [(activeDate)]=\"activeDate\"\r\n      [selected]=\"selected\"\r\n      [dateFilter]=\"dateFilter\"\r\n      [maxDate]=\"maxDate\"\r\n      [minDate]=\"minDate\"\r\n      (yearSelected)=\"_yearSelectedInMultiYearView($event)\"\r\n      (selectedChange)=\"_goToDateInView($event, 'year')\">\r\n  </ngx-mat-multi-year-view>\r\n</div>\r\n", styles: [".mat-calendar{display:block}.mat-calendar-header{padding:8px 8px 0}.mat-calendar-content{padding:0 8px 8px;outline:none}.mat-calendar-controls{display:flex;margin:5% calc(4.7142857143% - 16px)}.mat-calendar-spacer{flex:1 1 auto}.mat-calendar-period-button{min-width:0;background-color:unset}.mat-calendar-arrow{display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top-width:5px;border-top-style:solid;margin:0 0 0 5px;vertical-align:middle}.mat-calendar-arrow.mat-calendar-invert{transform:rotate(180deg)}[dir=rtl] .mat-calendar-arrow{margin:0 5px 0 0}.mat-calendar-previous-button,.mat-calendar-next-button{position:relative;background-color:unset}.mat-calendar-previous-button:after,.mat-calendar-next-button:after{inset:0;position:absolute;content:\"\";margin:15.5px;border:0 solid currentColor;border-top-width:2px}[dir=rtl] .mat-calendar-previous-button,[dir=rtl] .mat-calendar-next-button{transform:rotate(180deg)}.mat-calendar-previous-button:after{border-left-width:2px;transform:translate(2px) rotate(-45deg)}.mat-calendar-next-button:after{border-right-width:2px;transform:translate(-2px) rotate(45deg)}.mat-calendar-table{border-spacing:0;border-collapse:collapse;width:100%}.mat-calendar-table-header th{text-align:center;padding:0 0 8px}.mat-calendar-table-header-divider{position:relative;height:1px}.mat-calendar-table-header-divider:after{content:\"\";position:absolute;top:0;left:-8px;right:-8px;height:1px}\n"] }]
+        }], ctorParameters: () => [{ type: i1$1.MatDatepickerIntl }, { type: NgxMatDateAdapter, decorators: [{
                     type: Optional
                 }] }, { type: undefined, decorators: [{
                     type: Optional
                 }, {
                     type: Inject,
                     args: [NGX_MAT_DATE_FORMATS]
-                }] }, { type: i0.ChangeDetectorRef }]; }, propDecorators: { headerComponent: [{
+                }] }, { type: i0.ChangeDetectorRef }], propDecorators: { headerComponent: [{
                 type: Input
             }], startAt: [{
                 type: Input
@@ -1619,33 +1769,21 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
             }] } });
 
 class NgxMatTimepickerComponent {
-    constructor(_dateAdapter, cd, formBuilder) {
-        this._dateAdapter = _dateAdapter;
-        this.cd = cd;
-        this.formBuilder = formBuilder;
-        this.disabled = false;
-        this.showSpinners = true;
-        this.stepHour = DEFAULT_STEP;
-        this.stepMinute = DEFAULT_STEP;
-        this.stepSecond = DEFAULT_STEP;
-        this.showSeconds = false;
-        this.disableMinute = false;
-        this.enableMeridian = false;
-        this.color = 'primary';
-        this.meridian = MERIDIANS.AM;
-        this._onChange = () => { };
-        this._onTouched = () => { };
-        this._destroyed = new Subject();
-        this.pattern = PATTERN_INPUT_HOUR;
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxMatDateAdapter');
-        }
-        this.form = this.formBuilder.group({
-            hour: [{ value: null, disabled: this.disabled }, [Validators.required, Validators.pattern(PATTERN_INPUT_HOUR)]],
-            minute: [{ value: null, disabled: this.disabled }, [Validators.required, Validators.pattern(PATTERN_INPUT_MINUTE)]],
-            second: [{ value: null, disabled: this.disabled }, [Validators.required, Validators.pattern(PATTERN_INPUT_SECOND)]]
-        });
-    }
+    _dateAdapter;
+    cd;
+    formBuilder;
+    form;
+    disabled = false;
+    showSpinners = true;
+    stepHour = DEFAULT_STEP;
+    stepMinute = DEFAULT_STEP;
+    stepSecond = DEFAULT_STEP;
+    showSeconds = false;
+    disableMinute = false;
+    enableMeridian = false;
+    defaultTime;
+    color = 'primary';
+    meridian = MERIDIANS.AM;
     /** Hour */
     get hour() {
         let val = Number(this.form.controls['hour'].value);
@@ -1665,6 +1803,30 @@ class NgxMatTimepickerComponent {
     /** Whether or not the form is valid */
     get valid() {
         return this.form.valid;
+    }
+    _onChange = () => { };
+    _onTouched = () => { };
+    _disabled;
+    _model;
+    _destroyed = new Subject();
+    pattern = PATTERN_INPUT_HOUR;
+    /** Used to auto switch focus when input 2 number in time inputs */
+    inputFields;
+    inputHour;
+    inputMinute;
+    inputSecond;
+    constructor(_dateAdapter, cd, formBuilder) {
+        this._dateAdapter = _dateAdapter;
+        this.cd = cd;
+        this.formBuilder = formBuilder;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxMatDateAdapter');
+        }
+        this.form = this.formBuilder.group({
+            hour: [{ value: null, disabled: this.disabled }, [Validators.required, Validators.pattern(PATTERN_INPUT_HOUR)]],
+            minute: [{ value: null, disabled: this.disabled }, [Validators.required, Validators.pattern(PATTERN_INPUT_MINUTE)]],
+            second: [{ value: null, disabled: this.disabled }, [Validators.required, Validators.pattern(PATTERN_INPUT_SECOND)]]
+        });
     }
     ngOnInit() {
         this.form.valueChanges.pipe(takeUntil(this._destroyed), debounceTime(400)).subscribe(val => {
@@ -1838,16 +2000,16 @@ class NgxMatTimepickerComponent {
             }
         }
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatTimepickerComponent, deps: [{ token: NgxMatDateAdapter, optional: true }, { token: i0.ChangeDetectorRef }, { token: i2$1.UntypedFormBuilder }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatTimepickerComponent, selector: "ngx-mat-timepicker", inputs: { disabled: "disabled", showSpinners: "showSpinners", stepHour: "stepHour", stepMinute: "stepMinute", stepSecond: "stepSecond", showSeconds: "showSeconds", disableMinute: "disableMinute", enableMeridian: "enableMeridian", defaultTime: "defaultTime", color: "color" }, host: { classAttribute: "ngx-mat-timepicker" }, providers: [
+            {
+                provide: NG_VALUE_ACCESSOR,
+                useExisting: forwardRef((() => NgxMatTimepickerComponent)),
+                multi: true
+            }
+        ], viewQueries: [{ propertyName: "inputHour", first: true, predicate: ["inputHour"], descendants: true }, { propertyName: "inputMinute", first: true, predicate: ["inputMinute"], descendants: true }, { propertyName: "inputSecond", first: true, predicate: ["inputSecond"], descendants: true }], exportAs: ["ngxMatTimepicker"], usesOnChanges: true, ngImport: i0, template: "<form [formGroup]=\"form\">\r\n  <table class=\"ngx-mat-timepicker-table\">\r\n    <tbody class=\"ngx-mat-timepicker-tbody\">\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('hour', true)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('minute', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('second', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n\r\n      <tr>\r\n        <td>\r\n          <mat-form-field appearance=\"fill\">\r\n            <input type=\"text\" #inputHour matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" formControlName=\"hour\" autocomplete=\"nope\" name=\"\"\r\n              (keydown.ArrowUp)=\"change('hour', true); $event.preventDefault()\" (focus)=\"inputHour.select()\"\r\n              (keydown.ArrowDown)=\"change('hour', false); $event.preventDefault()\" (blur)=\"change('hour')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td>\r\n          <mat-form-field appearance=\"fill\">\r\n            <input type=\"text\" #inputMinute matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"minute\" (keydown.ArrowUp)=\"change('minute', true); $event.preventDefault()\" (focus)=\"inputMinute.select()\"\r\n              (keydown.ArrowDown)=\"change('minute', false); $event.preventDefault()\" (blur)=\"change('minute')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td *ngIf=\"showSeconds\" class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <mat-form-field appearance=\"fill\">\r\n            <input type=\"text\" #inputSecond matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"second\" (keydown.ArrowUp)=\"change('second', true); $event.preventDefault()\" (focus)=\"inputSecond.select()\"\r\n              (keydown.ArrowDown)=\"change('second', false); $event.preventDefault()\" (blur)=\"change('second')\">\r\n          </mat-form-field>\r\n        </td>\r\n\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-meridian\">\r\n          <button mat-button (click)=\"toggleMeridian()\" mat-stroked-button [color]=\"color\" [disabled]=\"disabled\">\r\n            {{meridian}}\r\n          </button>\r\n        </td>\r\n      </tr>\r\n\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('hour', false)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('minute', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td *ngIf=\"showSeconds\"></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('second', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n    </tbody>\r\n  </table>\r\n</form>", styles: [".ngx-mat-timepicker{font-size:13px}.ngx-mat-timepicker form{min-width:90px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td{text-align:center}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-spacer{font-weight:700}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-meridian .mat-mdc-button{min-width:64px;line-height:36px;min-width:0;border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-icon-button{height:24px;width:24px;line-height:24px;background-color:unset}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-icon-button .mat-icon{font-size:24px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-form-field{width:20px;max-width:20px;text-align:center}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-form-field .mat-form-field-flex{padding:0}\n"], dependencies: [{ kind: "directive", type: i1.NgIf, selector: "[ngIf]", inputs: ["ngIf", "ngIfThen", "ngIfElse"] }, { kind: "directive", type: i4.MatInput, selector: "input[matInput], textarea[matInput], select[matNativeControl],      input[matNativeControl], textarea[matNativeControl]", inputs: ["disabled", "id", "placeholder", "name", "required", "type", "errorStateMatcher", "aria-describedby", "value", "readonly"], exportAs: ["matInput"] }, { kind: "component", type: i2$2.MatFormField, selector: "mat-form-field", inputs: ["hideRequiredMarker", "color", "floatLabel", "appearance", "subscriptSizing", "hintLabel"], exportAs: ["matFormField"] }, { kind: "directive", type: i2$1.ɵNgNoValidate, selector: "form:not([ngNoForm]):not([ngNativeValidate])" }, { kind: "directive", type: i2$1.DefaultValueAccessor, selector: "input:not([type=checkbox])[formControlName],textarea[formControlName],input:not([type=checkbox])[formControl],textarea[formControl],input:not([type=checkbox])[ngModel],textarea[ngModel],[ngDefaultControl]" }, { kind: "directive", type: i2$1.NgControlStatus, selector: "[formControlName],[ngModel],[formControl]" }, { kind: "directive", type: i2$1.NgControlStatusGroup, selector: "[formGroupName],[formArrayName],[ngModelGroup],[formGroup],form:not([ngNoForm]),[ngForm]" }, { kind: "directive", type: i2$1.MaxLengthValidator, selector: "[maxlength][formControlName],[maxlength][formControl],[maxlength][ngModel]", inputs: ["maxlength"] }, { kind: "directive", type: i2$1.FormGroupDirective, selector: "[formGroup]", inputs: ["formGroup"], outputs: ["ngSubmit"], exportAs: ["ngForm"] }, { kind: "directive", type: i2$1.FormControlName, selector: "[formControlName]", inputs: ["formControlName", "disabled", "ngModel"], outputs: ["ngModelChange"] }, { kind: "component", type: i6.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }, { kind: "component", type: i3.MatButton, selector: "    button[mat-button], button[mat-raised-button], button[mat-flat-button],    button[mat-stroked-button]  ", exportAs: ["matButton"] }, { kind: "component", type: i3.MatIconButton, selector: "button[mat-icon-button]", exportAs: ["matButton"] }], encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatTimepickerComponent.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatTimepickerComponent, deps: [{ token: NgxMatDateAdapter, optional: true }, { token: i0.ChangeDetectorRef }, { token: i2$1.FormBuilder }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatTimepickerComponent.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatTimepickerComponent, selector: "ngx-mat-timepicker", inputs: { disabled: "disabled", showSpinners: "showSpinners", stepHour: "stepHour", stepMinute: "stepMinute", stepSecond: "stepSecond", showSeconds: "showSeconds", disableMinute: "disableMinute", enableMeridian: "enableMeridian", defaultTime: "defaultTime", color: "color" }, host: { classAttribute: "ngx-mat-timepicker" }, providers: [
-        {
-            provide: NG_VALUE_ACCESSOR,
-            useExisting: forwardRef((() => NgxMatTimepickerComponent)),
-            multi: true
-        }
-    ], viewQueries: [{ propertyName: "inputHour", first: true, predicate: ["inputHour"], descendants: true }, { propertyName: "inputMinute", first: true, predicate: ["inputMinute"], descendants: true }, { propertyName: "inputSecond", first: true, predicate: ["inputSecond"], descendants: true }], exportAs: ["ngxMatTimepicker"], usesOnChanges: true, ngImport: i0, template: "<form [formGroup]=\"form\">\r\n  <table class=\"ngx-mat-timepicker-table\">\r\n    <tbody class=\"ngx-mat-timepicker-tbody\">\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('hour', true)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('minute', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('second', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n\r\n      <tr>\r\n        <td>\r\n          <mat-form-field appearance=\"legacy\">\r\n            <input type=\"text\" #inputHour matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" formControlName=\"hour\" autocomplete=\"nope\" name=\"\"\r\n              (keydown.ArrowUp)=\"change('hour', true); $event.preventDefault()\" (focus)=\"inputHour.select()\"\r\n              (keydown.ArrowDown)=\"change('hour', false); $event.preventDefault()\" (blur)=\"change('hour')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td>\r\n          <mat-form-field appearance=\"legacy\">\r\n            <input type=\"text\" #inputMinute matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"minute\" (keydown.ArrowUp)=\"change('minute', true); $event.preventDefault()\" (focus)=\"inputMinute.select()\"\r\n              (keydown.ArrowDown)=\"change('minute', false); $event.preventDefault()\" (blur)=\"change('minute')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td *ngIf=\"showSeconds\" class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <mat-form-field appearance=\"legacy\">\r\n            <input type=\"text\" #inputSecond matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"second\" (keydown.ArrowUp)=\"change('second', true); $event.preventDefault()\" (focus)=\"inputSecond.select()\"\r\n              (keydown.ArrowDown)=\"change('second', false); $event.preventDefault()\" (blur)=\"change('second')\">\r\n          </mat-form-field>\r\n        </td>\r\n\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-meridian\">\r\n          <button mat-button (click)=\"toggleMeridian()\" mat-stroked-button [color]=\"color\" [disabled]=\"disabled\">\r\n            {{meridian}}\r\n          </button>\r\n        </td>\r\n      </tr>\r\n\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('hour', false)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('minute', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td *ngIf=\"showSeconds\"></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('second', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n    </tbody>\r\n  </table>\r\n</form>", styles: [".ngx-mat-timepicker{font-size:13px}.ngx-mat-timepicker form{min-width:90px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td{text-align:center}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-spacer{font-weight:bold}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-meridian .mat-button{min-width:64px;line-height:36px;min-width:0;border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-icon-button{height:24px;width:24px;line-height:24px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-icon-button .mat-icon{font-size:24px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-form-field{width:20px;max-width:20px;text-align:center}\n"], components: [{ type: i3.MatButton, selector: "button[mat-button], button[mat-raised-button], button[mat-icon-button],             button[mat-fab], button[mat-mini-fab], button[mat-stroked-button],             button[mat-flat-button]", inputs: ["disabled", "disableRipple", "color"], exportAs: ["matButton"] }, { type: i4.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }, { type: i2$2.MatFormField, selector: "mat-form-field", inputs: ["color", "appearance", "hideRequiredMarker", "hintLabel", "floatLabel"], exportAs: ["matFormField"] }], directives: [{ type: i2$1.ɵNgNoValidate, selector: "form:not([ngNoForm]):not([ngNativeValidate])" }, { type: i2$1.NgControlStatusGroup, selector: "[formGroupName],[formArrayName],[ngModelGroup],[formGroup],form:not([ngNoForm]),[ngForm]" }, { type: i2$1.FormGroupDirective, selector: "[formGroup]", inputs: ["formGroup"], outputs: ["ngSubmit"], exportAs: ["ngForm"] }, { type: i1.NgIf, selector: "[ngIf]", inputs: ["ngIf", "ngIfThen", "ngIfElse"] }, { type: i7$1.MatInput, selector: "input[matInput], textarea[matInput], select[matNativeControl],      input[matNativeControl], textarea[matNativeControl]", inputs: ["disabled", "id", "placeholder", "required", "type", "errorStateMatcher", "aria-describedby", "value", "readonly"], exportAs: ["matInput"] }, { type: i2$1.DefaultValueAccessor, selector: "input:not([type=checkbox])[formControlName],textarea[formControlName],input:not([type=checkbox])[formControl],textarea[formControl],input:not([type=checkbox])[ngModel],textarea[ngModel],[ngDefaultControl]" }, { type: i2$1.MaxLengthValidator, selector: "[maxlength][formControlName],[maxlength][formControl],[maxlength][ngModel]", inputs: ["maxlength"] }, { type: i2$1.NgControlStatus, selector: "[formControlName],[ngModel],[formControl]" }, { type: i2$1.FormControlName, selector: "[formControlName]", inputs: ["formControlName", "disabled", "ngModel"], outputs: ["ngModelChange"] }], encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatTimepickerComponent, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatTimepickerComponent, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-timepicker', host: {
                         'class': 'ngx-mat-timepicker'
@@ -1857,10 +2019,10 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                             useExisting: forwardRef((() => NgxMatTimepickerComponent)),
                             multi: true
                         }
-                    ], exportAs: 'ngxMatTimepicker', encapsulation: ViewEncapsulation.None, template: "<form [formGroup]=\"form\">\r\n  <table class=\"ngx-mat-timepicker-table\">\r\n    <tbody class=\"ngx-mat-timepicker-tbody\">\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('hour', true)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('minute', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('second', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n\r\n      <tr>\r\n        <td>\r\n          <mat-form-field appearance=\"legacy\">\r\n            <input type=\"text\" #inputHour matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" formControlName=\"hour\" autocomplete=\"nope\" name=\"\"\r\n              (keydown.ArrowUp)=\"change('hour', true); $event.preventDefault()\" (focus)=\"inputHour.select()\"\r\n              (keydown.ArrowDown)=\"change('hour', false); $event.preventDefault()\" (blur)=\"change('hour')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td>\r\n          <mat-form-field appearance=\"legacy\">\r\n            <input type=\"text\" #inputMinute matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"minute\" (keydown.ArrowUp)=\"change('minute', true); $event.preventDefault()\" (focus)=\"inputMinute.select()\"\r\n              (keydown.ArrowDown)=\"change('minute', false); $event.preventDefault()\" (blur)=\"change('minute')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td *ngIf=\"showSeconds\" class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <mat-form-field appearance=\"legacy\">\r\n            <input type=\"text\" #inputSecond matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"second\" (keydown.ArrowUp)=\"change('second', true); $event.preventDefault()\" (focus)=\"inputSecond.select()\"\r\n              (keydown.ArrowDown)=\"change('second', false); $event.preventDefault()\" (blur)=\"change('second')\">\r\n          </mat-form-field>\r\n        </td>\r\n\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-meridian\">\r\n          <button mat-button (click)=\"toggleMeridian()\" mat-stroked-button [color]=\"color\" [disabled]=\"disabled\">\r\n            {{meridian}}\r\n          </button>\r\n        </td>\r\n      </tr>\r\n\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('hour', false)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('minute', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td *ngIf=\"showSeconds\"></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('second', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n    </tbody>\r\n  </table>\r\n</form>", styles: [".ngx-mat-timepicker{font-size:13px}.ngx-mat-timepicker form{min-width:90px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td{text-align:center}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-spacer{font-weight:bold}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-meridian .mat-button{min-width:64px;line-height:36px;min-width:0;border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-icon-button{height:24px;width:24px;line-height:24px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-icon-button .mat-icon{font-size:24px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-form-field{width:20px;max-width:20px;text-align:center}\n"] }]
-        }], ctorParameters: function () { return [{ type: NgxMatDateAdapter, decorators: [{
+                    ], exportAs: 'ngxMatTimepicker', encapsulation: ViewEncapsulation.None, template: "<form [formGroup]=\"form\">\r\n  <table class=\"ngx-mat-timepicker-table\">\r\n    <tbody class=\"ngx-mat-timepicker-tbody\">\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('hour', true)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('minute', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_less icon\" (click)=\"change('second', true)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_less</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n\r\n      <tr>\r\n        <td>\r\n          <mat-form-field appearance=\"fill\">\r\n            <input type=\"text\" #inputHour matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" formControlName=\"hour\" autocomplete=\"nope\" name=\"\"\r\n              (keydown.ArrowUp)=\"change('hour', true); $event.preventDefault()\" (focus)=\"inputHour.select()\"\r\n              (keydown.ArrowDown)=\"change('hour', false); $event.preventDefault()\" (blur)=\"change('hour')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td>\r\n          <mat-form-field appearance=\"fill\">\r\n            <input type=\"text\" #inputMinute matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"minute\" (keydown.ArrowUp)=\"change('minute', true); $event.preventDefault()\" (focus)=\"inputMinute.select()\"\r\n              (keydown.ArrowDown)=\"change('minute', false); $event.preventDefault()\" (blur)=\"change('minute')\">\r\n          </mat-form-field>\r\n        </td>\r\n        <td *ngIf=\"showSeconds\" class=\"ngx-mat-timepicker-spacer\">&#58;</td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <mat-form-field appearance=\"fill\">\r\n            <input type=\"text\" #inputSecond matInput (input)=\"formatInput($any($event).target)\" maxlength=\"2\" autocomplete=\"nope\" name=\"\"\r\n              formControlName=\"second\" (keydown.ArrowUp)=\"change('second', true); $event.preventDefault()\" (focus)=\"inputSecond.select()\"\r\n              (keydown.ArrowDown)=\"change('second', false); $event.preventDefault()\" (blur)=\"change('second')\">\r\n          </mat-form-field>\r\n        </td>\r\n\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-meridian\">\r\n          <button mat-button (click)=\"toggleMeridian()\" mat-stroked-button [color]=\"color\" [disabled]=\"disabled\">\r\n            {{meridian}}\r\n          </button>\r\n        </td>\r\n      </tr>\r\n\r\n      <tr *ngIf=\"showSpinners\">\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('hour', false)\"\r\n            [disabled]=\"disabled\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td></td>\r\n        <td>\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('minute', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button> </td>\r\n        <td *ngIf=\"showSeconds\"></td>\r\n        <td *ngIf=\"showSeconds\">\r\n          <button type=\"button\" mat-icon-button aria-label=\"expand_more icon\" (click)=\"change('second', false)\"\r\n            [disabled]=\"disabled || disableMinute\">\r\n            <mat-icon>expand_more</mat-icon>\r\n          </button>\r\n        </td>\r\n        <td *ngIf=\"enableMeridian\" class=\"ngx-mat-timepicker-spacer\"></td>\r\n        <td *ngIf=\"enableMeridian\"></td>\r\n      </tr>\r\n    </tbody>\r\n  </table>\r\n</form>", styles: [".ngx-mat-timepicker{font-size:13px}.ngx-mat-timepicker form{min-width:90px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td{text-align:center}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-spacer{font-weight:700}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td.ngx-mat-timepicker-meridian .mat-mdc-button{min-width:64px;line-height:36px;min-width:0;border-radius:50%;width:36px;height:36px;padding:0;flex-shrink:0}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-icon-button{height:24px;width:24px;line-height:24px;background-color:unset}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-icon-button .mat-icon{font-size:24px}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-form-field{width:20px;max-width:20px;text-align:center}.ngx-mat-timepicker form .ngx-mat-timepicker-table .ngx-mat-timepicker-tbody tr td .mat-mdc-form-field .mat-form-field-flex{padding:0}\n"] }]
+        }], ctorParameters: () => [{ type: NgxMatDateAdapter, decorators: [{
                     type: Optional
-                }] }, { type: i0.ChangeDetectorRef }, { type: i2$1.FormBuilder }]; }, propDecorators: { disabled: [{
+                }] }, { type: i0.ChangeDetectorRef }, { type: i2$1.UntypedFormBuilder }], propDecorators: { disabled: [{
                 type: Input
             }], showSpinners: [{
                 type: Input
@@ -1896,6 +2058,7 @@ let datepickerUid = 0;
 // Boilerplate for applying mixins to MatDatepickerContent.
 /** @docs-private */
 const _MatDatetimepickerContentBase = mixinColor(class {
+    _elementRef;
     constructor(_elementRef) {
         this._elementRef = _elementRef;
     }
@@ -1908,11 +2071,16 @@ const _MatDatetimepickerContentBase = mixinColor(class {
  * @docs-private
  */
 class NgxMatDatetimeContent extends _MatDatetimepickerContentBase {
-    constructor(elementRef, cd, _viewContainerRef) {
-        super(elementRef);
-        this.cd = cd;
-        this._viewContainerRef = _viewContainerRef;
-    }
+    cd;
+    _viewContainerRef;
+    /** Reference to the internal calendar component. */
+    _calendar;
+    /** Reference to the internal time picker component. */
+    _timePicker;
+    /** Reference to the datepicker that created the overlay. */
+    datepicker;
+    /** Whether the datepicker is above or below the input. */
+    _isAbove;
     /** Whether or not the selected date is valid (min,max...) */
     get valid() {
         if (this.datepicker.hideTime)
@@ -1924,6 +2092,12 @@ class NgxMatDatetimeContent extends _MatDatetimepickerContentBase {
             return true;
         return this._calendar.currentView == 'month';
     }
+    _templateCustomIconPortal;
+    constructor(elementRef, cd, _viewContainerRef) {
+        super(elementRef);
+        this.cd = cd;
+        this._viewContainerRef = _viewContainerRef;
+    }
     ngAfterViewInit() {
         this._calendar.focusActiveCell();
         if (this.datepicker._customIcon) {
@@ -1931,13 +2105,13 @@ class NgxMatDatetimeContent extends _MatDatetimepickerContentBase {
             this.cd.detectChanges();
         }
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimeContent, deps: [{ token: i0.ElementRef }, { token: i0.ChangeDetectorRef }, { token: i0.ViewContainerRef }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatDatetimeContent, selector: "ngx-mat-datetime-content", inputs: { color: "color" }, host: { properties: { "@transformPanel": "\"enter\"", "class.mat-datepicker-content-touch": "datepicker.touchUi" }, classAttribute: "mat-datepicker-content" }, viewQueries: [{ propertyName: "_calendar", first: true, predicate: NgxMatCalendar, descendants: true }, { propertyName: "_timePicker", first: true, predicate: NgxMatTimepickerComponent, descendants: true }], exportAs: ["ngxMatDatetimeContent"], usesInheritance: true, ngImport: i0, template: "<ngx-mat-calendar cdkTrapFocus [id]=\"datepicker.id\" [ngClass]=\"datepicker.panelClass\" [startAt]=\"datepicker.startAt\"\r\n    [startView]=\"datepicker.startView\" [minDate]=\"datepicker._minDate\" [maxDate]=\"datepicker._maxDate\"\r\n    [dateFilter]=\"datepicker._dateFilter\" [headerComponent]=\"datepicker.calendarHeaderComponent\"\r\n    [selected]=\"datepicker._selected\" [dateClass]=\"datepicker.dateClass\" [@fadeInCalendar]=\"'enter'\"\r\n    (selectedChange)=\"datepicker.select($event)\" (yearSelected)=\"datepicker._selectYear($event)\"\r\n    (monthSelected)=\"datepicker._selectMonth($event)\">\r\n</ngx-mat-calendar>\r\n<ng-container *ngIf=\"isViewMonth\">\r\n    <div *ngIf=\"!datepicker._hideTime\" class=\"time-container\" [class.disable-seconds]=\"!datepicker._showSeconds\">\r\n        <ngx-mat-timepicker [showSpinners]=\"datepicker._showSpinners\" [showSeconds]=\"datepicker._showSeconds\"\r\n            [disabled]=\"datepicker._disabled\" [stepHour]=\"datepicker._stepHour\" [stepMinute]=\"datepicker._stepMinute\"\r\n            [stepSecond]=\"datepicker._stepSecond\" [(ngModel)]=\"datepicker._selected\" [color]=\"datepicker._color\"\r\n            [enableMeridian]=\"datepicker._enableMeridian\" [disableMinute]=\"datepicker._disableMinute\">\r\n        </ngx-mat-timepicker>\r\n    </div>\r\n    <div class=\"actions\">\r\n        <button mat-button (click)=\"datepicker.ok()\" mat-stroked-button [color]=\"datepicker._color\" cdkFocusInitial\r\n            [disabled]=\"!valid\">\r\n            <mat-icon *ngIf=\"!datepicker._customIcon\">done</mat-icon>\r\n            <ng-template [cdkPortalOutlet]=\"_templateCustomIconPortal\"></ng-template>\r\n        </button>\r\n    </div>\r\n</ng-container>", styles: [".mat-datepicker-content{display:block;border-radius:4px;box-shadow:0 2px 4px -1px #0003,0 4px 5px #00000024,0 1px 10px #0000001f;background-color:#fff}.mat-datepicker-content .mat-calendar{width:296px}.mat-datepicker-content .time-container{display:flex;position:relative;padding-top:5px;justify-content:center}.mat-datepicker-content .time-container.disable-seconds .ngx-mat-timepicker .table{margin-left:9px}.mat-datepicker-content .time-container:before{content:\"\";position:absolute;top:0;left:0;right:0;height:1px;background-color:#0000001f}.mat-datepicker-content .actions{display:flex;padding:5px 15px 10px;justify-content:flex-end}\n"], dependencies: [{ kind: "directive", type: i1.NgClass, selector: "[ngClass]", inputs: ["class", "ngClass"] }, { kind: "directive", type: i1.NgIf, selector: "[ngIf]", inputs: ["ngIf", "ngIfThen", "ngIfElse"] }, { kind: "directive", type: i5.CdkPortalOutlet, selector: "[cdkPortalOutlet]", inputs: ["cdkPortalOutlet"], outputs: ["attached"], exportAs: ["cdkPortalOutlet"] }, { kind: "directive", type: i2$1.NgControlStatus, selector: "[formControlName],[ngModel],[formControl]" }, { kind: "directive", type: i2$1.NgModel, selector: "[ngModel]:not([formControlName]):not([formControl])", inputs: ["name", "disabled", "ngModel", "ngModelOptions"], outputs: ["ngModelChange"], exportAs: ["ngModel"] }, { kind: "component", type: i6.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }, { kind: "component", type: i3.MatButton, selector: "    button[mat-button], button[mat-raised-button], button[mat-flat-button],    button[mat-stroked-button]  ", exportAs: ["matButton"] }, { kind: "component", type: NgxMatTimepickerComponent, selector: "ngx-mat-timepicker", inputs: ["disabled", "showSpinners", "stepHour", "stepMinute", "stepSecond", "showSeconds", "disableMinute", "enableMeridian", "defaultTime", "color"], exportAs: ["ngxMatTimepicker"] }, { kind: "component", type: NgxMatCalendar, selector: "ngx-mat-calendar", inputs: ["headerComponent", "startAt", "startView", "selected", "minDate", "maxDate", "dateFilter", "dateClass"], outputs: ["selectedChange", "yearSelected", "monthSelected", "_userSelection"], exportAs: ["ngxMatCalendar"] }], animations: [
+            matDatepickerAnimations.transformPanel,
+            matDatepickerAnimations.fadeInCalendar,
+        ], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimeContent.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimeContent, deps: [{ token: i0.ElementRef }, { token: i0.ChangeDetectorRef }, { token: i0.ViewContainerRef }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimeContent.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatDatetimeContent, selector: "ngx-mat-datetime-content", inputs: { color: "color" }, host: { properties: { "@transformPanel": "\"enter\"", "class.mat-datepicker-content-touch": "datepicker.touchUi" }, classAttribute: "mat-datepicker-content" }, viewQueries: [{ propertyName: "_calendar", first: true, predicate: NgxMatCalendar, descendants: true }, { propertyName: "_timePicker", first: true, predicate: NgxMatTimepickerComponent, descendants: true }], exportAs: ["ngxMatDatetimeContent"], usesInheritance: true, ngImport: i0, template: "<ngx-mat-calendar cdkTrapFocus [id]=\"datepicker.id\" [ngClass]=\"datepicker.panelClass\" [startAt]=\"datepicker.startAt\"\r\n    [startView]=\"datepicker.startView\" [minDate]=\"datepicker._minDate\" [maxDate]=\"datepicker._maxDate\"\r\n    [dateFilter]=\"datepicker._dateFilter\" [headerComponent]=\"datepicker.calendarHeaderComponent\"\r\n    [selected]=\"datepicker._selected\" [dateClass]=\"datepicker.dateClass\" [@fadeInCalendar]=\"'enter'\"\r\n    (selectedChange)=\"datepicker.select($event)\" (yearSelected)=\"datepicker._selectYear($event)\"\r\n    (monthSelected)=\"datepicker._selectMonth($event)\">\r\n</ngx-mat-calendar>\r\n<ng-container *ngIf=\"isViewMonth\">\r\n    <div *ngIf=\"!datepicker._hideTime\" class=\"time-container\" [class.disable-seconds]=\"!datepicker._showSeconds\">\r\n        <ngx-mat-timepicker [showSpinners]=\"datepicker._showSpinners\" [showSeconds]=\"datepicker._showSeconds\"\r\n            [disabled]=\"datepicker._disabled\" [stepHour]=\"datepicker._stepHour\" [stepMinute]=\"datepicker._stepMinute\"\r\n            [stepSecond]=\"datepicker._stepSecond\" [(ngModel)]=\"datepicker._selected\" [color]=\"datepicker._color\"\r\n            [enableMeridian]=\"datepicker._enableMeridian\" [disableMinute]=\"datepicker._disableMinute\">\r\n        </ngx-mat-timepicker>\r\n    </div>\r\n    <div class=\"actions\">\r\n        <button mat-button (click)=\"datepicker.ok()\" mat-stroked-button [color]=\"datepicker._color\" cdkFocusInitial\r\n            [disabled]=\"!valid\">\r\n            <mat-icon *ngIf=\"!datepicker._customIcon\">done</mat-icon>\r\n            <ng-template [cdkPortalOutlet]=\"_templateCustomIconPortal\"></ng-template>\r\n        </button>\r\n    </div>\r\n</ng-container>", styles: [".mat-datepicker-content{display:block;border-radius:4px;box-shadow:0 2px 4px -1px #0003,0 4px 5px #00000024,0 1px 10px #0000001f}.mat-datepicker-content .mat-calendar{width:296px}.mat-datepicker-content .time-container{display:flex;position:relative;padding-top:5px;justify-content:center}.mat-datepicker-content .time-container.disable-seconds .ngx-mat-timepicker .table{margin-left:9px}.mat-datepicker-content .time-container:before{content:\"\";position:absolute;top:0;left:0;right:0;height:1px;background-color:#0000001f}.mat-datepicker-content .actions{display:flex;padding:5px 15px 10px;justify-content:flex-end}\n"], components: [{ type: NgxMatCalendar, selector: "ngx-mat-calendar", inputs: ["headerComponent", "startAt", "startView", "selected", "minDate", "maxDate", "dateFilter", "dateClass"], outputs: ["selectedChange", "yearSelected", "monthSelected", "_userSelection"], exportAs: ["ngxMatCalendar"] }, { type: NgxMatTimepickerComponent, selector: "ngx-mat-timepicker", inputs: ["disabled", "showSpinners", "stepHour", "stepMinute", "stepSecond", "showSeconds", "disableMinute", "enableMeridian", "defaultTime", "color"], exportAs: ["ngxMatTimepicker"] }, { type: i3.MatButton, selector: "button[mat-button], button[mat-raised-button], button[mat-icon-button],             button[mat-fab], button[mat-mini-fab], button[mat-stroked-button],             button[mat-flat-button]", inputs: ["disabled", "disableRipple", "color"], exportAs: ["matButton"] }, { type: i4.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }], directives: [{ type: i1.NgClass, selector: "[ngClass]", inputs: ["class", "ngClass"] }, { type: i1.NgIf, selector: "[ngIf]", inputs: ["ngIf", "ngIfThen", "ngIfElse"] }, { type: i2$1.NgControlStatus, selector: "[formControlName],[ngModel],[formControl]" }, { type: i2$1.NgModel, selector: "[ngModel]:not([formControlName]):not([formControl])", inputs: ["name", "disabled", "ngModel", "ngModelOptions"], outputs: ["ngModelChange"], exportAs: ["ngModel"] }, { type: i7.CdkPortalOutlet, selector: "[cdkPortalOutlet]", inputs: ["cdkPortalOutlet"], outputs: ["attached"], exportAs: ["cdkPortalOutlet"] }], animations: [
-        matDatepickerAnimations.transformPanel,
-        matDatepickerAnimations.fadeInCalendar,
-    ], changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimeContent, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimeContent, decorators: [{
             type: Component,
             args: [{ selector: 'ngx-mat-datetime-content', host: {
                         'class': 'mat-datepicker-content',
@@ -1946,8 +2120,8 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                     }, animations: [
                         matDatepickerAnimations.transformPanel,
                         matDatepickerAnimations.fadeInCalendar,
-                    ], exportAs: 'ngxMatDatetimeContent', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, inputs: ['color'], template: "<ngx-mat-calendar cdkTrapFocus [id]=\"datepicker.id\" [ngClass]=\"datepicker.panelClass\" [startAt]=\"datepicker.startAt\"\r\n    [startView]=\"datepicker.startView\" [minDate]=\"datepicker._minDate\" [maxDate]=\"datepicker._maxDate\"\r\n    [dateFilter]=\"datepicker._dateFilter\" [headerComponent]=\"datepicker.calendarHeaderComponent\"\r\n    [selected]=\"datepicker._selected\" [dateClass]=\"datepicker.dateClass\" [@fadeInCalendar]=\"'enter'\"\r\n    (selectedChange)=\"datepicker.select($event)\" (yearSelected)=\"datepicker._selectYear($event)\"\r\n    (monthSelected)=\"datepicker._selectMonth($event)\">\r\n</ngx-mat-calendar>\r\n<ng-container *ngIf=\"isViewMonth\">\r\n    <div *ngIf=\"!datepicker._hideTime\" class=\"time-container\" [class.disable-seconds]=\"!datepicker._showSeconds\">\r\n        <ngx-mat-timepicker [showSpinners]=\"datepicker._showSpinners\" [showSeconds]=\"datepicker._showSeconds\"\r\n            [disabled]=\"datepicker._disabled\" [stepHour]=\"datepicker._stepHour\" [stepMinute]=\"datepicker._stepMinute\"\r\n            [stepSecond]=\"datepicker._stepSecond\" [(ngModel)]=\"datepicker._selected\" [color]=\"datepicker._color\"\r\n            [enableMeridian]=\"datepicker._enableMeridian\" [disableMinute]=\"datepicker._disableMinute\">\r\n        </ngx-mat-timepicker>\r\n    </div>\r\n    <div class=\"actions\">\r\n        <button mat-button (click)=\"datepicker.ok()\" mat-stroked-button [color]=\"datepicker._color\" cdkFocusInitial\r\n            [disabled]=\"!valid\">\r\n            <mat-icon *ngIf=\"!datepicker._customIcon\">done</mat-icon>\r\n            <ng-template [cdkPortalOutlet]=\"_templateCustomIconPortal\"></ng-template>\r\n        </button>\r\n    </div>\r\n</ng-container>", styles: [".mat-datepicker-content{display:block;border-radius:4px;box-shadow:0 2px 4px -1px #0003,0 4px 5px #00000024,0 1px 10px #0000001f}.mat-datepicker-content .mat-calendar{width:296px}.mat-datepicker-content .time-container{display:flex;position:relative;padding-top:5px;justify-content:center}.mat-datepicker-content .time-container.disable-seconds .ngx-mat-timepicker .table{margin-left:9px}.mat-datepicker-content .time-container:before{content:\"\";position:absolute;top:0;left:0;right:0;height:1px;background-color:#0000001f}.mat-datepicker-content .actions{display:flex;padding:5px 15px 10px;justify-content:flex-end}\n"] }]
-        }], ctorParameters: function () { return [{ type: i0.ElementRef }, { type: i0.ChangeDetectorRef }, { type: i0.ViewContainerRef }]; }, propDecorators: { _calendar: [{
+                    ], exportAs: 'ngxMatDatetimeContent', encapsulation: ViewEncapsulation.None, changeDetection: ChangeDetectionStrategy.OnPush, inputs: ['color'], template: "<ngx-mat-calendar cdkTrapFocus [id]=\"datepicker.id\" [ngClass]=\"datepicker.panelClass\" [startAt]=\"datepicker.startAt\"\r\n    [startView]=\"datepicker.startView\" [minDate]=\"datepicker._minDate\" [maxDate]=\"datepicker._maxDate\"\r\n    [dateFilter]=\"datepicker._dateFilter\" [headerComponent]=\"datepicker.calendarHeaderComponent\"\r\n    [selected]=\"datepicker._selected\" [dateClass]=\"datepicker.dateClass\" [@fadeInCalendar]=\"'enter'\"\r\n    (selectedChange)=\"datepicker.select($event)\" (yearSelected)=\"datepicker._selectYear($event)\"\r\n    (monthSelected)=\"datepicker._selectMonth($event)\">\r\n</ngx-mat-calendar>\r\n<ng-container *ngIf=\"isViewMonth\">\r\n    <div *ngIf=\"!datepicker._hideTime\" class=\"time-container\" [class.disable-seconds]=\"!datepicker._showSeconds\">\r\n        <ngx-mat-timepicker [showSpinners]=\"datepicker._showSpinners\" [showSeconds]=\"datepicker._showSeconds\"\r\n            [disabled]=\"datepicker._disabled\" [stepHour]=\"datepicker._stepHour\" [stepMinute]=\"datepicker._stepMinute\"\r\n            [stepSecond]=\"datepicker._stepSecond\" [(ngModel)]=\"datepicker._selected\" [color]=\"datepicker._color\"\r\n            [enableMeridian]=\"datepicker._enableMeridian\" [disableMinute]=\"datepicker._disableMinute\">\r\n        </ngx-mat-timepicker>\r\n    </div>\r\n    <div class=\"actions\">\r\n        <button mat-button (click)=\"datepicker.ok()\" mat-stroked-button [color]=\"datepicker._color\" cdkFocusInitial\r\n            [disabled]=\"!valid\">\r\n            <mat-icon *ngIf=\"!datepicker._customIcon\">done</mat-icon>\r\n            <ng-template [cdkPortalOutlet]=\"_templateCustomIconPortal\"></ng-template>\r\n        </button>\r\n    </div>\r\n</ng-container>", styles: [".mat-datepicker-content{display:block;border-radius:4px;box-shadow:0 2px 4px -1px #0003,0 4px 5px #00000024,0 1px 10px #0000001f;background-color:#fff}.mat-datepicker-content .mat-calendar{width:296px}.mat-datepicker-content .time-container{display:flex;position:relative;padding-top:5px;justify-content:center}.mat-datepicker-content .time-container.disable-seconds .ngx-mat-timepicker .table{margin-left:9px}.mat-datepicker-content .time-container:before{content:\"\";position:absolute;top:0;left:0;right:0;height:1px;background-color:#0000001f}.mat-datepicker-content .actions{display:flex;padding:5px 15px 10px;justify-content:flex-end}\n"] }]
+        }], ctorParameters: () => [{ type: i0.ElementRef }, { type: i0.ChangeDetectorRef }, { type: i0.ViewContainerRef }], propDecorators: { _calendar: [{
                 type: ViewChild,
                 args: [NgxMatCalendar]
             }], _timePicker: [{
@@ -1959,69 +2133,18 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
 // if angular adds support for `exportAs: '$implicit'` on directives.
 /** Component responsible for managing the datepicker popup/dialog. */
 class NgxMatDatetimePicker {
-    constructor(_dialog, _overlay, _ngZone, _viewContainerRef, scrollStrategy, _dateAdapter, _dir, _document) {
-        this._dialog = _dialog;
-        this._overlay = _overlay;
-        this._ngZone = _ngZone;
-        this._viewContainerRef = _viewContainerRef;
-        this._dateAdapter = _dateAdapter;
-        this._dir = _dir;
-        this._document = _document;
-        /** The view that the calendar should start in. */
-        this.startView = 'month';
-        this._defaultColor = 'primary';
-        this._touchUi = false;
-        this._hideTime = false;
-        /**
-         * Emits selected year in multiyear view.
-         * This doesn't imply a change on the selected date.
-         */
-        this.yearSelected = new EventEmitter();
-        /**
-         * Emits selected month in year view.
-         * This doesn't imply a change on the selected date.
-         */
-        this.monthSelected = new EventEmitter();
-        /** Emits when the datepicker has been opened. */
-        this.openedStream = new EventEmitter();
-        /** Emits when the datepicker has been closed. */
-        this.closedStream = new EventEmitter();
-        this._opened = false;
-        this._showSpinners = true;
-        this._showSeconds = false;
-        this._stepHour = DEFAULT_STEP;
-        this._stepMinute = DEFAULT_STEP;
-        this._stepSecond = DEFAULT_STEP;
-        this._enableMeridian = false;
-        this._hasBackdrop = true;
-        /** The id for the datepicker calendar. */
-        this.id = `mat-datepicker-${datepickerUid++}`;
-        this._validSelected = null;
-        /** The element that was focused before the datepicker was opened. */
-        this._focusedElementBeforeOpen = null;
-        /** Subscription to value changes in the associated input element. */
-        this._inputSubscription = Subscription.EMPTY;
-        /** Emits when the datepicker is disabled. */
-        this.stateChanges = new Subject();
-        /** Emits new selected date when selected date changes. */
-        this._selectedChanged = new Subject();
-        /** The form control validator for the min date. */
-        this._minValidator = () => {
-            return (!this._minDate || !this._selected ||
-                this._dateAdapter.compareDateWithTime(this._minDate, this._selected, this.showSeconds) <= 0) ?
-                null : { 'matDatetimePickerMin': { 'min': this._minDate, 'actual': this._selected } };
-        };
-        /** The form control validator for the max date. */
-        this._maxValidator = () => {
-            return (!this._maxDate || !this._selected ||
-                this._dateAdapter.compareDateWithTime(this._maxDate, this._selected, this.showSeconds) >= 0) ?
-                null : { 'matDatetimePickerMax': { 'max': this._maxDate, 'actual': this._selected } };
-        };
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxMatDateAdapter');
-        }
-        this._scrollStrategy = scrollStrategy;
-    }
+    _dialog;
+    _overlay;
+    _ngZone;
+    _viewContainerRef;
+    _dateAdapter;
+    _dir;
+    _document;
+    _scrollStrategy;
+    /** An input indicating the type of the custom header component for the calendar, if set. */
+    calendarHeaderComponent;
+    /** Custom icon set by the consumer. */
+    _customIcon;
     /** The date to open the calendar to initially. */
     get startAt() {
         // If an explicit startAt is set we start there, otherwise we start at whatever the currently
@@ -2031,6 +2154,9 @@ class NgxMatDatetimePicker {
     set startAt(value) {
         this._startAt = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
     }
+    _startAt;
+    /** The view that the calendar should start in. */
+    startView = 'month';
     /** Default Color palette to use on the datepicker's calendar. */
     get defaultColor() {
         return this._defaultColor;
@@ -2038,6 +2164,7 @@ class NgxMatDatetimePicker {
     set defaultColor(value) {
         this._defaultColor = value;
     }
+    _defaultColor = 'primary';
     /** Color palette to use on the datepicker's calendar. */
     get color() {
         return this._color ||
@@ -2046,6 +2173,7 @@ class NgxMatDatetimePicker {
     set color(value) {
         this._color = value;
     }
+    _color;
     /**
      * Whether the calendar UI is in touch mode. In touch mode the calendar opens in a dialog rather
      * than a popup and elements have more padding to allow for bigger touch targets.
@@ -2054,10 +2182,12 @@ class NgxMatDatetimePicker {
     set touchUi(value) {
         this._touchUi = coerceBooleanProperty(value);
     }
+    _touchUi = false;
     get hideTime() { return this._hideTime; }
     set hideTime(value) {
         this._hideTime = coerceBooleanProperty(value);
     }
+    _hideTime = false;
     /** Whether the datepicker pop-up should be disabled. */
     get disabled() {
         return this._disabled === undefined && this.datepickerInput ?
@@ -2070,36 +2200,68 @@ class NgxMatDatetimePicker {
             this.stateChanges.next(newValue);
         }
     }
+    _disabled;
+    /**
+     * Emits selected year in multiyear view.
+     * This doesn't imply a change on the selected date.
+     */
+    yearSelected = new EventEmitter();
+    /**
+     * Emits selected month in year view.
+     * This doesn't imply a change on the selected date.
+     */
+    monthSelected = new EventEmitter();
+    /** Classes to be passed to the date picker panel. Supports the same syntax as `ngClass`. */
+    panelClass;
+    /** Function that can be used to add custom CSS classes to dates. */
+    dateClass;
+    /** Emits when the datepicker has been opened. */
+    openedStream = new EventEmitter();
+    /** Emits when the datepicker has been closed. */
+    closedStream = new EventEmitter();
     /** Whether the calendar is open. */
     get opened() { return this._opened; }
     set opened(value) { value ? this.open() : this.close(); }
+    _opened = false;
     /** Whether the timepicker'spinners is shown. */
     get showSpinners() { return this._showSpinners; }
     set showSpinners(value) { this._showSpinners = value; }
+    _showSpinners = true;
     /** Whether the second part is disabled. */
     get showSeconds() { return this._showSeconds; }
     set showSeconds(value) { this._showSeconds = value; }
+    _showSeconds = false;
     /** Step hour */
     get stepHour() { return this._stepHour; }
     set stepHour(value) { this._stepHour = value; }
+    _stepHour = DEFAULT_STEP;
     /** Step minute */
     get stepMinute() { return this._stepMinute; }
     set stepMinute(value) { this._stepMinute = value; }
+    _stepMinute = DEFAULT_STEP;
     /** Step second */
     get stepSecond() { return this._stepSecond; }
     set stepSecond(value) { this._stepSecond = value; }
+    _stepSecond = DEFAULT_STEP;
     /** Enable meridian */
     get enableMeridian() { return this._enableMeridian; }
     set enableMeridian(value) { this._enableMeridian = value; }
+    _enableMeridian = false;
     /** disable minute */
     get disableMinute() { return this._disableMinute; }
     set disableMinute(value) { this._disableMinute = value; }
+    _disableMinute;
     /** Step second */
     get defaultTime() { return this._defaultTime; }
     set defaultTime(value) { this._defaultTime = value; }
+    _defaultTime;
+    _hasBackdrop = true;
+    /** The id for the datepicker calendar. */
+    id = `mat-datepicker-${datepickerUid++}`;
     /** The currently selected date. */
     get _selected() { return this._validSelected; }
     set _selected(value) { this._validSelected = value; }
+    _validSelected = null;
     /** The minimum selectable date. */
     get _minDate() {
         return this.datepickerInput && this.datepickerInput.min;
@@ -2116,6 +2278,39 @@ class NgxMatDatetimePicker {
     get _dateFilter() {
         return this.datepickerInput && this.datepickerInput._dateFilter;
     }
+    /** A reference to the overlay when the calendar is opened as a popup. */
+    _popupRef;
+    /** A reference to the dialog when the calendar is opened as a dialog. */
+    _dialogRef;
+    /** A portal containing the calendar for this datepicker. */
+    _calendarPortal;
+    /** Reference to the component instantiated in popup mode. */
+    _popupComponentRef;
+    /** The element that was focused before the datepicker was opened. */
+    _focusedElementBeforeOpen = null;
+    /** Subscription to value changes in the associated input element. */
+    _inputSubscription = Subscription.EMPTY;
+    /** The input element this datepicker is associated with. */
+    datepickerInput;
+    /** Emits when the datepicker is disabled. */
+    stateChanges = new Subject();
+    /** Emits new selected date when selected date changes. */
+    _selectedChanged = new Subject();
+    /** Raw value before  */
+    _rawValue;
+    constructor(_dialog, _overlay, _ngZone, _viewContainerRef, scrollStrategy, _dateAdapter, _dir, _document) {
+        this._dialog = _dialog;
+        this._overlay = _overlay;
+        this._ngZone = _ngZone;
+        this._viewContainerRef = _viewContainerRef;
+        this._dateAdapter = _dateAdapter;
+        this._dir = _dir;
+        this._document = _document;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxMatDateAdapter');
+        }
+        this._scrollStrategy = scrollStrategy;
+    }
     ngOnDestroy() {
         this.close();
         if (this._popupRef) {
@@ -2125,6 +2320,18 @@ class NgxMatDatetimePicker {
         this._inputSubscription.unsubscribe();
         this.stateChanges.complete();
     }
+    /** The form control validator for the min date. */
+    _minValidator = () => {
+        return (!this._minDate || !this._selected ||
+            this._dateAdapter.compareDateWithTime(this._minDate, this._selected, this.showSeconds) <= 0) ?
+            null : { 'matDatetimePickerMin': { 'min': this._minDate, 'actual': this._selected } };
+    };
+    /** The form control validator for the max date. */
+    _maxValidator = () => {
+        return (!this._maxDate || !this._selected ||
+            this._dateAdapter.compareDateWithTime(this._maxDate, this._selected, this.showSeconds) >= 0) ?
+            null : { 'matDatetimePickerMax': { 'max': this._maxDate, 'actual': this._selected } };
+    };
     /** Selects the given date */
     select(date) {
         this._dateAdapter.copyTime(date, this._selected);
@@ -2334,10 +2541,10 @@ class NgxMatDatetimePicker {
             this._dialogRef.componentInstance.color = color;
         }
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimePicker, deps: [{ token: i8.MatDialog }, { token: i9.Overlay }, { token: i0.NgZone }, { token: i0.ViewContainerRef }, { token: MAT_DATEPICKER_SCROLL_STRATEGY }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }, { token: DOCUMENT, optional: true }], target: i0.ɵɵFactoryTarget.Component });
+    /** @nocollapse */ static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatDatetimePicker, selector: "ngx-mat-datetime-picker", inputs: { calendarHeaderComponent: "calendarHeaderComponent", startAt: "startAt", startView: "startView", defaultColor: "defaultColor", color: "color", touchUi: "touchUi", hideTime: "hideTime", disabled: "disabled", panelClass: "panelClass", dateClass: "dateClass", opened: "opened", showSpinners: "showSpinners", showSeconds: "showSeconds", stepHour: "stepHour", stepMinute: "stepMinute", stepSecond: "stepSecond", enableMeridian: "enableMeridian", disableMinute: "disableMinute", defaultTime: "defaultTime" }, outputs: { yearSelected: "yearSelected", monthSelected: "monthSelected", openedStream: "opened", closedStream: "closed" }, queries: [{ propertyName: "_customIcon", first: true, predicate: TemplateRef, descendants: true }], exportAs: ["ngxMatDatetimePicker"], ngImport: i0, template: '', isInline: true, changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimePicker.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimePicker, deps: [{ token: i8.MatDialog }, { token: i9.Overlay }, { token: i0.NgZone }, { token: i0.ViewContainerRef }, { token: MAT_DATEPICKER_SCROLL_STRATEGY }, { token: NgxMatDateAdapter, optional: true }, { token: i2.Directionality, optional: true }, { token: DOCUMENT, optional: true }], target: i0.ɵɵFactoryTarget.Component });
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimePicker.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatDatetimePicker, selector: "ngx-mat-datetime-picker", inputs: { calendarHeaderComponent: "calendarHeaderComponent", startAt: "startAt", startView: "startView", defaultColor: "defaultColor", color: "color", touchUi: "touchUi", hideTime: "hideTime", disabled: "disabled", panelClass: "panelClass", dateClass: "dateClass", opened: "opened", showSpinners: "showSpinners", showSeconds: "showSeconds", stepHour: "stepHour", stepMinute: "stepMinute", stepSecond: "stepSecond", enableMeridian: "enableMeridian", disableMinute: "disableMinute", defaultTime: "defaultTime" }, outputs: { yearSelected: "yearSelected", monthSelected: "monthSelected", openedStream: "opened", closedStream: "closed" }, queries: [{ propertyName: "_customIcon", first: true, predicate: TemplateRef, descendants: true }], exportAs: ["ngxMatDatetimePicker"], ngImport: i0, template: '', isInline: true, changeDetection: i0.ChangeDetectionStrategy.OnPush, encapsulation: i0.ViewEncapsulation.None });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimePicker, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimePicker, decorators: [{
             type: Component,
             args: [{
                     selector: 'ngx-mat-datetime-picker',
@@ -2346,7 +2553,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                     changeDetection: ChangeDetectionStrategy.OnPush,
                     encapsulation: ViewEncapsulation.None,
                 }]
-        }], ctorParameters: function () { return [{ type: i8.MatDialog }, { type: i9.Overlay }, { type: i0.NgZone }, { type: i0.ViewContainerRef }, { type: undefined, decorators: [{
+        }], ctorParameters: () => [{ type: i8.MatDialog }, { type: i9.Overlay }, { type: i0.NgZone }, { type: i0.ViewContainerRef }, { type: undefined, decorators: [{
                     type: Inject,
                     args: [MAT_DATEPICKER_SCROLL_STRATEGY]
                 }] }, { type: NgxMatDateAdapter, decorators: [{
@@ -2358,7 +2565,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                 }, {
                     type: Inject,
                     args: [DOCUMENT]
-                }] }]; }, propDecorators: { calendarHeaderComponent: [{
+                }] }], propDecorators: { calendarHeaderComponent: [{
                 type: Input
             }], _customIcon: [{
                 type: ContentChild,
@@ -2436,6 +2643,10 @@ const MAT_DATEPICKER_VALIDATORS = {
  * calendar popup. For consistency, we always use MatDatetimePickerInputEvent instead.
  */
 class MatDatetimePickerInputEvent {
+    target;
+    targetElement;
+    /** The new value for the target datepicker input. */
+    value;
     constructor(
     /** Reference to the datepicker input component that emitted the event. */
     target, 
@@ -2448,64 +2659,10 @@ class MatDatetimePickerInputEvent {
 }
 /** Directive used to connect an input to a matDatetimePicker. */
 class NgxMatDatetimeInput {
-    constructor(_elementRef, _dateAdapter, _dateFormats, _formField) {
-        this._elementRef = _elementRef;
-        this._dateAdapter = _dateAdapter;
-        this._dateFormats = _dateFormats;
-        this._formField = _formField;
-        /** Emits when a `change` event is fired on this `<input>`. */
-        this.dateChange = new EventEmitter();
-        /** Emits when an `input` event is fired on this `<input>`. */
-        this.dateInput = new EventEmitter();
-        /** Emits when the value changes (either due to user input or programmatic change). */
-        this._valueChange = new EventEmitter();
-        /** Emits when the disabled state has changed */
-        this.stateChanges = new EventEmitter();
-        this._onTouched = () => { };
-        this._cvaOnChange = () => { };
-        this._validatorOnChange = () => { };
-        this._datepickerSubscription = Subscription.EMPTY;
-        this._localeSubscription = Subscription.EMPTY;
-        /** The form control validator for whether the input parses. */
-        this._parseValidator = () => {
-            return this._lastValueValid ?
-                null : { 'matDatetimePickerParse': { 'text': this._elementRef.nativeElement.value } };
-        };
-        /** The form control validator for the min date. */
-        this._minValidator = (control) => {
-            const controlValue = this._getValidDateOrNull(this._dateAdapter.deserialize(control.value));
-            return (!this.min || !controlValue ||
-                this._dateAdapter.compareDateWithTime(this.min, controlValue, this._datepicker.showSeconds) <= 0) ?
-                null : { 'matDatetimePickerMin': { 'min': this.min, 'actual': controlValue } };
-        };
-        /** The form control validator for the max date. */
-        this._maxValidator = (control) => {
-            const controlValue = this._getValidDateOrNull(this._dateAdapter.deserialize(control.value));
-            return (!this.max || !controlValue ||
-                this._dateAdapter.compareDateWithTime(this.max, controlValue, this._datepicker.showSeconds) >= 0) ?
-                null : { 'matDatetimePickerMax': { 'max': this.max, 'actual': controlValue } };
-        };
-        /** The form control validator for the date filter. */
-        this._filterValidator = (control) => {
-            const controlValue = this._getValidDateOrNull(this._dateAdapter.deserialize(control.value));
-            return !this._dateFilter || !controlValue || this._dateFilter(controlValue) ?
-                null : { 'matDatetimePickerFilter': true };
-        };
-        /** The combined form control validator for this input. */
-        this._validator = Validators.compose([this._parseValidator, this._minValidator, this._maxValidator, this._filterValidator]);
-        /** Whether the last value set on the input was valid. */
-        this._lastValueValid = false;
-        if (!this._dateAdapter) {
-            throw createMissingDateImplError('NgxMatDateAdapter');
-        }
-        if (!this._dateFormats) {
-            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
-        }
-        // Update the displayed date when the locale changes.
-        this._localeSubscription = _dateAdapter.localeChanges.subscribe(() => {
-            this.value = this.value;
-        });
-    }
+    _elementRef;
+    _dateAdapter;
+    _dateFormats;
+    _formField;
     /** The datepicker that this input is associated with. */
     set ngxMatDatetimePicker(value) {
         if (!value) {
@@ -2522,11 +2679,13 @@ class NgxMatDatetimeInput {
             this.dateChange.emit(new MatDatetimePickerInputEvent(this, this._elementRef.nativeElement));
         });
     }
+    _datepicker;
     /** Function that can be used to filter out dates within the datepicker. */
     set ngxMatDatetimePickerFilter(value) {
         this._dateFilter = value;
         this._validatorOnChange();
     }
+    _dateFilter;
     /** The value of the input. */
     get value() { return this._value; }
     set value(value) {
@@ -2540,18 +2699,21 @@ class NgxMatDatetimeInput {
             this._valueChange.emit(value);
         }
     }
+    _value;
     /** The minimum valid date. */
     get min() { return this._min; }
     set min(value) {
         this._min = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
         this._validatorOnChange();
     }
+    _min;
     /** The maximum valid date. */
     get max() { return this._max; }
     set max(value) {
         this._max = this._getValidDateOrNull(this._dateAdapter.deserialize(value));
         this._validatorOnChange();
     }
+    _max;
     /** Whether the datepicker-input is disabled. */
     get disabled() { return !!this._disabled; }
     set disabled(value) {
@@ -2568,6 +2730,65 @@ class NgxMatDatetimeInput {
             // which then causes a changed after checked error if the input element was focused before.
             element.blur();
         }
+    }
+    _disabled;
+    /** Emits when a `change` event is fired on this `<input>`. */
+    dateChange = new EventEmitter();
+    /** Emits when an `input` event is fired on this `<input>`. */
+    dateInput = new EventEmitter();
+    /** Emits when the value changes (either due to user input or programmatic change). */
+    _valueChange = new EventEmitter();
+    /** Emits when the disabled state has changed */
+    stateChanges = new EventEmitter();
+    _onTouched = () => { };
+    _cvaOnChange = () => { };
+    _validatorOnChange = () => { };
+    _datepickerSubscription = Subscription.EMPTY;
+    _localeSubscription = Subscription.EMPTY;
+    /** The form control validator for whether the input parses. */
+    _parseValidator = () => {
+        return this._lastValueValid ?
+            null : { 'matDatetimePickerParse': { 'text': this._elementRef.nativeElement.value } };
+    };
+    /** The form control validator for the min date. */
+    _minValidator = (control) => {
+        const controlValue = this._getValidDateOrNull(this._dateAdapter.deserialize(control.value));
+        return (!this.min || !controlValue ||
+            this._dateAdapter.compareDateWithTime(this.min, controlValue, this._datepicker.showSeconds) <= 0) ?
+            null : { 'matDatetimePickerMin': { 'min': this.min, 'actual': controlValue } };
+    };
+    /** The form control validator for the max date. */
+    _maxValidator = (control) => {
+        const controlValue = this._getValidDateOrNull(this._dateAdapter.deserialize(control.value));
+        return (!this.max || !controlValue ||
+            this._dateAdapter.compareDateWithTime(this.max, controlValue, this._datepicker.showSeconds) >= 0) ?
+            null : { 'matDatetimePickerMax': { 'max': this.max, 'actual': controlValue } };
+    };
+    /** The form control validator for the date filter. */
+    _filterValidator = (control) => {
+        const controlValue = this._getValidDateOrNull(this._dateAdapter.deserialize(control.value));
+        return !this._dateFilter || !controlValue || this._dateFilter(controlValue) ?
+            null : { 'matDatetimePickerFilter': true };
+    };
+    /** The combined form control validator for this input. */
+    _validator = Validators.compose([this._parseValidator, this._minValidator, this._maxValidator, this._filterValidator]);
+    /** Whether the last value set on the input was valid. */
+    _lastValueValid = false;
+    constructor(_elementRef, _dateAdapter, _dateFormats, _formField) {
+        this._elementRef = _elementRef;
+        this._dateAdapter = _dateAdapter;
+        this._dateFormats = _dateFormats;
+        this._formField = _formField;
+        if (!this._dateAdapter) {
+            throw createMissingDateImplError('NgxMatDateAdapter');
+        }
+        if (!this._dateFormats) {
+            throw createMissingDateImplError('NGX_MAT_DATE_FORMATS');
+        }
+        // Update the displayed date when the locale changes.
+        this._localeSubscription = _dateAdapter.localeChanges.subscribe(() => {
+            this.value = this.value;
+        });
     }
     ngOnDestroy() {
         this._datepickerSubscription.unsubscribe();
@@ -2675,14 +2896,14 @@ class NgxMatDatetimeInput {
     _getValidDateOrNull(obj) {
         return (this._dateAdapter.isDateInstance(obj) && this._dateAdapter.isValid(obj)) ? obj : null;
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimeInput, deps: [{ token: i0.ElementRef }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i2$2.MatFormField, optional: true }], target: i0.ɵɵFactoryTarget.Directive });
+    /** @nocollapse */ static ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "14.0.0", version: "18.2.11", type: NgxMatDatetimeInput, selector: "input[ngxMatDatetimePicker]", inputs: { ngxMatDatetimePicker: "ngxMatDatetimePicker", ngxMatDatetimePickerFilter: "ngxMatDatetimePickerFilter", value: "value", min: "min", max: "max", disabled: "disabled" }, outputs: { dateChange: "dateChange", dateInput: "dateInput" }, host: { listeners: { "input": "_onInput($event.target.value)", "change": "_onChange()", "blur": "_onBlur()", "focus": "_onFocus()", "dblclick": "_onFocus()", "keydown": "_onKeydown($event)" }, properties: { "attr.aria-haspopup": "_datepicker ? \"dialog\" : null", "attr.aria-owns": "(_datepicker?.opened && _datepicker.id) || null", "attr.min": "min ? _dateAdapter.toIso8601(min) : null", "attr.max": "max ? _dateAdapter.toIso8601(max) : null", "disabled": "disabled" } }, providers: [
+            MAT_DATEPICKER_VALUE_ACCESSOR,
+            MAT_DATEPICKER_VALIDATORS,
+            { provide: MAT_INPUT_VALUE_ACCESSOR, useExisting: NgxMatDatetimeInput },
+        ], exportAs: ["ngxMatDatetimePickerInput"], ngImport: i0 });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimeInput.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimeInput, deps: [{ token: i0.ElementRef }, { token: NgxMatDateAdapter, optional: true }, { token: NGX_MAT_DATE_FORMATS, optional: true }, { token: i2$2.MatFormField, optional: true }], target: i0.ɵɵFactoryTarget.Directive });
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimeInput.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "12.0.0", version: "13.0.1", type: NgxMatDatetimeInput, selector: "input[ngxMatDatetimePicker]", inputs: { ngxMatDatetimePicker: "ngxMatDatetimePicker", ngxMatDatetimePickerFilter: "ngxMatDatetimePickerFilter", value: "value", min: "min", max: "max", disabled: "disabled" }, outputs: { dateChange: "dateChange", dateInput: "dateInput" }, host: { listeners: { "input": "_onInput($event.target.value)", "change": "_onChange()", "blur": "_onBlur()", "focus": "_onFocus()", "dblclick": "_onFocus()", "keydown": "_onKeydown($event)" }, properties: { "attr.aria-haspopup": "_datepicker ? \"dialog\" : null", "attr.aria-owns": "(_datepicker?.opened && _datepicker.id) || null", "attr.min": "min ? _dateAdapter.toIso8601(min) : null", "attr.max": "max ? _dateAdapter.toIso8601(max) : null", "disabled": "disabled" } }, providers: [
-        MAT_DATEPICKER_VALUE_ACCESSOR,
-        MAT_DATEPICKER_VALIDATORS,
-        { provide: MAT_INPUT_VALUE_ACCESSOR, useExisting: NgxMatDatetimeInput },
-    ], exportAs: ["ngxMatDatetimePickerInput"], ngImport: i0 });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimeInput, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimeInput, decorators: [{
             type: Directive,
             args: [{
                     selector: 'input[ngxMatDatetimePicker]',
@@ -2706,7 +2927,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                     },
                     exportAs: 'ngxMatDatetimePickerInput',
                 }]
-        }], ctorParameters: function () { return [{ type: i0.ElementRef }, { type: NgxMatDateAdapter, decorators: [{
+        }], ctorParameters: () => [{ type: i0.ElementRef }, { type: NgxMatDateAdapter, decorators: [{
                     type: Optional
                 }] }, { type: undefined, decorators: [{
                     type: Optional
@@ -2715,7 +2936,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                     args: [NGX_MAT_DATE_FORMATS]
                 }] }, { type: i2$2.MatFormField, decorators: [{
                     type: Optional
-                }] }]; }, propDecorators: { ngxMatDatetimePicker: [{
+                }] }], propDecorators: { ngxMatDatetimePicker: [{
                 type: Input
             }], ngxMatDatetimePickerFilter: [{
                 type: Input
@@ -2734,23 +2955,21 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
             }] } });
 
 class NgxMatTimepickerModule {
-}
-/** @nocollapse */ /** @nocollapse */ NgxMatTimepickerModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatTimepickerModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
-/** @nocollapse */ /** @nocollapse */ NgxMatTimepickerModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatTimepickerModule, declarations: [NgxMatTimepickerComponent], imports: [CommonModule,
-        MatInputModule,
-        ReactiveFormsModule,
-        FormsModule,
-        MatIconModule,
-        MatButtonModule], exports: [NgxMatTimepickerComponent] });
-/** @nocollapse */ /** @nocollapse */ NgxMatTimepickerModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatTimepickerModule, imports: [[
-            CommonModule,
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatTimepickerModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+    /** @nocollapse */ static ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "18.2.11", ngImport: i0, type: NgxMatTimepickerModule, declarations: [NgxMatTimepickerComponent], imports: [CommonModule,
             MatInputModule,
             ReactiveFormsModule,
             FormsModule,
             MatIconModule,
-            MatButtonModule,
-        ]] });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatTimepickerModule, decorators: [{
+            MatButtonModule], exports: [NgxMatTimepickerComponent] });
+    /** @nocollapse */ static ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatTimepickerModule, imports: [CommonModule,
+            MatInputModule,
+            ReactiveFormsModule,
+            FormsModule,
+            MatIconModule,
+            MatButtonModule] });
+}
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatTimepickerModule, decorators: [{
             type: NgModule,
             args: [{
                     imports: [
@@ -2771,40 +2990,16 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
         }] });
 
 class NgxMatDatetimePickerModule {
-}
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimePickerModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimePickerModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimePickerModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimePickerModule, declarations: [NgxMatDatetimePicker,
-        NgxMatDatetimeContent,
-        NgxMatDatetimeInput,
-        NgxMatCalendar,
-        NgxMatMonthView,
-        NgxMatCalendarBody,
-        NgxMatYearView,
-        NgxMatMultiYearView,
-        NgxMatCalendarHeader], imports: [CommonModule,
-        MatDatepickerModule,
-        MatDialogModule,
-        PortalModule,
-        FormsModule,
-        MatIconModule,
-        MatButtonModule,
-        MatInputModule,
-        NgxMatTimepickerModule], exports: [NgxMatDatetimePicker,
-        NgxMatDatetimeInput,
-        NgxMatCalendar,
-        NgxMatMonthView,
-        NgxMatCalendarBody,
-        NgxMatYearView,
-        NgxMatMultiYearView,
-        NgxMatCalendarHeader] });
-/** @nocollapse */ /** @nocollapse */ NgxMatDatetimePickerModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimePickerModule, providers: [
-        MAT_DATEPICKER_SCROLL_STRATEGY_FACTORY_PROVIDER,
-        {
-            provide: NGX_MAT_DATE_RANGE_SELECTION_STRATEGY,
-            useClass: DefaultNgxMatCalendarRangeStrategy
-        }
-    ], imports: [[
-            CommonModule,
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimePickerModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+    /** @nocollapse */ static ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimePickerModule, declarations: [NgxMatDatetimePicker,
+            NgxMatDatetimeContent,
+            NgxMatDatetimeInput,
+            NgxMatCalendar,
+            NgxMatMonthView,
+            NgxMatCalendarBody,
+            NgxMatYearView,
+            NgxMatMultiYearView,
+            NgxMatCalendarHeader], imports: [CommonModule,
             MatDatepickerModule,
             MatDialogModule,
             PortalModule,
@@ -2812,9 +3007,31 @@ class NgxMatDatetimePickerModule {
             MatIconModule,
             MatButtonModule,
             MatInputModule,
-            NgxMatTimepickerModule
-        ]] });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatDatetimePickerModule, decorators: [{
+            NgxMatTimepickerModule], exports: [NgxMatDatetimePicker,
+            NgxMatDatetimeInput,
+            NgxMatCalendar,
+            NgxMatMonthView,
+            NgxMatCalendarBody,
+            NgxMatYearView,
+            NgxMatMultiYearView,
+            NgxMatCalendarHeader] });
+    /** @nocollapse */ static ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimePickerModule, providers: [
+            MAT_DATEPICKER_SCROLL_STRATEGY_FACTORY_PROVIDER,
+            {
+                provide: NGX_MAT_DATE_RANGE_SELECTION_STRATEGY,
+                useClass: DefaultNgxMatCalendarRangeStrategy
+            }
+        ], imports: [CommonModule,
+            MatDatepickerModule,
+            MatDialogModule,
+            PortalModule,
+            FormsModule,
+            MatIconModule,
+            MatButtonModule,
+            MatInputModule,
+            NgxMatTimepickerModule] });
+}
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatDatetimePickerModule, decorators: [{
             type: NgModule,
             args: [{
                     imports: [
@@ -2847,10 +3064,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                         NgxMatCalendarBody,
                         NgxMatYearView,
                         NgxMatMultiYearView,
-                        NgxMatCalendarHeader
-                    ],
-                    entryComponents: [
-                        NgxMatDatetimeContent,
                         NgxMatCalendarHeader
                     ],
                     providers: [
@@ -2910,20 +3123,22 @@ function range(length, valueFunction) {
 }
 /** Adapts the native JS Date for use with cdk-based components that work with dates. */
 class NgxMatNativeDateAdapter extends NgxMatDateAdapter {
+    /** Whether to clamp the date between 1 and 9999 to avoid IE and Edge errors. */
+    _clampDate;
+    /**
+     * Whether to use `timeZone: 'utc'` with `Intl.DateTimeFormat` when formatting dates.
+     * Without this `Intl.DateTimeFormat` sometimes chooses the wrong timeZone, which can throw off
+     * the result. (e.g. in the en-US locale `new Date(1800, 7, 14).toLocaleDateString()`
+     * will produce `'8/13/1800'`.
+     *
+     * TODO(mmalerba): drop this variable. It's not being used in the code right now. We're now
+     * getting the string representation of a Date object from its utc representation. We're keeping
+     * it here for sometime, just for precaution, in case we decide to revert some of these changes
+     * though.
+     */
+    useUtcForDisplay = true;
     constructor(matDateLocale, platform) {
         super();
-        /**
-         * Whether to use `timeZone: 'utc'` with `Intl.DateTimeFormat` when formatting dates.
-         * Without this `Intl.DateTimeFormat` sometimes chooses the wrong timeZone, which can throw off
-         * the result. (e.g. in the en-US locale `new Date(1800, 7, 14).toLocaleDateString()`
-         * will produce `'8/13/1800'`.
-         *
-         * TODO(mmalerba): drop this variable. It's not being used in the code right now. We're now
-         * getting the string representation of a Date object from its utc representation. We're keeping
-         * it here for sometime, just for precaution, in case we decide to revert some of these changes
-         * though.
-         */
-        this.useUtcForDisplay = true;
         super.setLocale(matDateLocale);
         // IE does its own time zone correction, so we disable this on IE.
         this.useUtcForDisplay = !platform.TRIDENT;
@@ -3142,17 +3357,17 @@ class NgxMatNativeDateAdapter extends NgxMatDateAdapter {
         d.setUTCHours(date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
         return dtf.format(d);
     }
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateAdapter, deps: [{ token: MAT_DATE_LOCALE, optional: true }, { token: i1$2.Platform }], target: i0.ɵɵFactoryTarget.Injectable });
+    /** @nocollapse */ static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateAdapter });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatNativeDateAdapter.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateAdapter, deps: [{ token: MAT_DATE_LOCALE, optional: true }, { token: i1$2.Platform }], target: i0.ɵɵFactoryTarget.Injectable });
-/** @nocollapse */ /** @nocollapse */ NgxMatNativeDateAdapter.ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateAdapter });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateAdapter, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateAdapter, decorators: [{
             type: Injectable
-        }], ctorParameters: function () { return [{ type: undefined, decorators: [{
+        }], ctorParameters: () => [{ type: undefined, decorators: [{
                     type: Optional
                 }, {
                     type: Inject,
                     args: [MAT_DATE_LOCALE]
-                }] }, { type: i1$2.Platform }]; } });
+                }] }, { type: i1$2.Platform }] });
 
 /**
  * @license
@@ -3185,13 +3400,13 @@ const NGX_MAT_NATIVE_DATE_FORMATS = {
  * found in the LICENSE file at https://angular.io/license
  */
 class NgxNativeDateModule {
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxNativeDateModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+    /** @nocollapse */ static ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "18.2.11", ngImport: i0, type: NgxNativeDateModule, imports: [PlatformModule] });
+    /** @nocollapse */ static ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxNativeDateModule, providers: [
+            { provide: NgxMatDateAdapter, useClass: NgxMatNativeDateAdapter },
+        ], imports: [PlatformModule] });
 }
-/** @nocollapse */ /** @nocollapse */ NgxNativeDateModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxNativeDateModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
-/** @nocollapse */ /** @nocollapse */ NgxNativeDateModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxNativeDateModule, imports: [PlatformModule] });
-/** @nocollapse */ /** @nocollapse */ NgxNativeDateModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxNativeDateModule, providers: [
-        { provide: NgxMatDateAdapter, useClass: NgxMatNativeDateAdapter },
-    ], imports: [[PlatformModule]] });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxNativeDateModule, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxNativeDateModule, decorators: [{
             type: NgModule,
             args: [{
                     imports: [PlatformModule],
@@ -3201,11 +3416,11 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImpor
                 }]
         }] });
 class NgxMatNativeDateModule {
+    /** @nocollapse */ static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+    /** @nocollapse */ static ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateModule, imports: [NgxNativeDateModule] });
+    /** @nocollapse */ static ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateModule, providers: [{ provide: NGX_MAT_DATE_FORMATS, useValue: NGX_MAT_NATIVE_DATE_FORMATS }], imports: [NgxNativeDateModule] });
 }
-/** @nocollapse */ /** @nocollapse */ NgxMatNativeDateModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
-/** @nocollapse */ /** @nocollapse */ NgxMatNativeDateModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateModule, imports: [NgxNativeDateModule] });
-/** @nocollapse */ /** @nocollapse */ NgxMatNativeDateModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateModule, providers: [{ provide: NGX_MAT_DATE_FORMATS, useValue: NGX_MAT_NATIVE_DATE_FORMATS }], imports: [[NgxNativeDateModule]] });
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "13.0.1", ngImport: i0, type: NgxMatNativeDateModule, decorators: [{
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.11", ngImport: i0, type: NgxMatNativeDateModule, decorators: [{
             type: NgModule,
             args: [{
                     imports: [NgxNativeDateModule],
