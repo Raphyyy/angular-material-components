@@ -28,14 +28,6 @@
     "ngx-mat-timepicker"
   ],
   "license": "MIT",
-  "peerDependencies": {
-    "@angular/platform-browser": "^13.0.1",
-    "@angular/common": "^13.0.1",
-    "@angular/core": "^13.0.1",
-    "@angular/forms": "^13.0.1",
-    "@angular/material": "^13.0.1",
-    "@angular/cdk": "^13.0.1"
-  },
   "module": "fesm2022/angular-material-components-datetime-picker.mjs",
   "typings": "index.d.ts",
   "exports": {
