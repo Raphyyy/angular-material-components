@@ -50,7 +50,7 @@ export declare class NgxMatNativeDateAdapter extends NgxMatDateAdapter<Date> {
      * invalid date for all other values.
      */
     deserialize(value: any): Date | null;
-    isDateInstance(obj: any): boolean;
+    isDateInstance(obj: any): obj is Date;
     isValid(date: Date): boolean;
     invalid(): Date;
     getHour(date: Date): number;

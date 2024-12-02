@@ -14,7 +14,7 @@ import { ComponentPortal, ComponentType, TemplatePortal } from '@angular/cdk/por
 import { DOCUMENT } from '@angular/common';
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, ContentChild, ElementRef, EventEmitter, Inject, Input, NgZone, OnDestroy, Optional, Output, TemplateRef, ViewChild, ViewContainerRef, ViewEncapsulation } from '@angular/core';
 import { ValidationErrors } from '@angular/forms';
-import { CanColor, mixinColor, ThemePalette } from '@angular/material/core';
+import { ThemePalette } from '@angular/material/core';
 import { MatCalendarCellCssClasses, matDatepickerAnimations, MAT_DATEPICKER_SCROLL_STRATEGY } from '@angular/material/datepicker';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { merge, Subject, Subscription } from 'rxjs';
@@ -30,11 +30,11 @@ let datepickerUid = 0;
 
 // Boilerplate for applying mixins to MatDatepickerContent.
 /** @docs-private */
-const _MatDatetimepickerContentBase = mixinColor(
-  class {
-    constructor(public _elementRef: ElementRef) { }
-  },
-);
+// const _MatDatetimepickerContentBase = mixinColor(
+//   class {
+//     constructor(public _elementRef: ElementRef) { }
+//   },
+// );
 
 /**
  * Component used as the content for the datepicker dialog and popup. We use this instead of using
@@ -62,8 +62,8 @@ const _MatDatetimepickerContentBase = mixinColor(
     inputs: ['color'],
     standalone: false
 })
-export class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentBase
-  implements AfterViewInit, CanColor {
+export class NgxMatDatetimeContent<D>
+  implements AfterViewInit {
 
   /** Reference to the internal calendar component. */
   @ViewChild(NgxMatCalendar) _calendar: NgxMatCalendar<D>;
@@ -92,7 +92,7 @@ export class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentBase
 
   constructor(elementRef: ElementRef, private cd: ChangeDetectorRef,
     private _viewContainerRef: ViewContainerRef) {
-    super(elementRef);
+    // super(elementRef);
   }
 
   ngAfterViewInit() {
@@ -121,7 +121,7 @@ export class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentBase
     encapsulation: ViewEncapsulation.None,
     standalone: false
 })
-export class NgxMatDatetimePicker<D> implements OnDestroy, CanColor {
+export class NgxMatDatetimePicker<D> implements OnDestroy {
 
   private _scrollStrategy: () => ScrollStrategy;
 
@@ -614,10 +614,10 @@ export class NgxMatDatetimePicker<D> implements OnDestroy, CanColor {
   private _setColor(): void {
     const color = this.color;
     if (this._popupComponentRef) {
-      this._popupComponentRef.instance.color = color;
+      // this._popupComponentRef.instance.color = color;
     }
     if (this._dialogRef) {
-      this._dialogRef.componentInstance.color = color;
+      // this._dialogRef.componentInstance.color = color;
     }
   }
 

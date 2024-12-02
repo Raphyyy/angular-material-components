@@ -9,7 +9,7 @@ import { Directionality } from '@angular/cdk/bidi';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentType, TemplatePortal } from '@angular/cdk/portal';
 import { AfterViewInit, ChangeDetectorRef, ElementRef, EventEmitter, NgZone, OnDestroy, TemplateRef, ViewContainerRef } from '@angular/core';
-import { CanColor, ThemePalette } from '@angular/material/core';
+import { ThemePalette } from '@angular/material/core';
 import { MatCalendarCellCssClasses } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
@@ -19,11 +19,6 @@ import { NgxMatDatetimeInput } from './datetime-input';
 import { NgxMatTimepickerComponent } from './timepicker.component';
 import * as i0 from "@angular/core";
 /** @docs-private */
-declare const _MatDatetimepickerContentBase: import("@angular/material/core")._Constructor<CanColor> & import("@angular/material/core")._AbstractConstructor<CanColor> & {
-    new (_elementRef: ElementRef): {
-        _elementRef: ElementRef;
-    };
-};
 /**
  * Component used as the content for the datepicker dialog and popup. We use this instead of using
  * NgxMatCalendar directly as the content so we can control the initial focus. This also gives us a
@@ -31,7 +26,7 @@ declare const _MatDatetimepickerContentBase: import("@angular/material/core")._C
  * future. (e.g. confirmation buttons).
  * @docs-private
  */
-export declare class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentBase implements AfterViewInit, CanColor {
+export declare class NgxMatDatetimeContent<D> implements AfterViewInit {
     private cd;
     private _viewContainerRef;
     /** Reference to the internal calendar component. */
@@ -52,7 +47,7 @@ export declare class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentB
     static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatDatetimeContent<any>, "ngx-mat-datetime-content", ["ngxMatDatetimeContent"], { "color": { "alias": "color"; "required": false; }; }, {}, never, never, false, never>;
 }
 /** Component responsible for managing the datepicker popup/dialog. */
-export declare class NgxMatDatetimePicker<D> implements OnDestroy, CanColor {
+export declare class NgxMatDatetimePicker<D> implements OnDestroy {
     private _dialog;
     private _overlay;
     private _ngZone;
@@ -223,4 +218,3 @@ export declare class NgxMatDatetimePicker<D> implements OnDestroy, CanColor {
     static ɵfac: i0.ɵɵFactoryDeclaration<NgxMatDatetimePicker<any>, [null, null, null, null, null, { optional: true; }, { optional: true; }, { optional: true; }]>;
     static ɵcmp: i0.ɵɵComponentDeclaration<NgxMatDatetimePicker<any>, "ngx-mat-datetime-picker", ["ngxMatDatetimePicker"], { "calendarHeaderComponent": { "alias": "calendarHeaderComponent"; "required": false; }; "startAt": { "alias": "startAt"; "required": false; }; "startView": { "alias": "startView"; "required": false; }; "defaultColor": { "alias": "defaultColor"; "required": false; }; "color": { "alias": "color"; "required": false; }; "touchUi": { "alias": "touchUi"; "required": false; }; "hideTime": { "alias": "hideTime"; "required": false; }; "disabled": { "alias": "disabled"; "required": false; }; "panelClass": { "alias": "panelClass"; "required": false; }; "dateClass": { "alias": "dateClass"; "required": false; }; "opened": { "alias": "opened"; "required": false; }; "showSpinners": { "alias": "showSpinners"; "required": false; }; "showSeconds": { "alias": "showSeconds"; "required": false; }; "stepHour": { "alias": "stepHour"; "required": false; }; "stepMinute": { "alias": "stepMinute"; "required": false; }; "stepSecond": { "alias": "stepSecond"; "required": false; }; "enableMeridian": { "alias": "enableMeridian"; "required": false; }; "disableMinute": { "alias": "disableMinute"; "required": false; }; "defaultTime": { "alias": "defaultTime"; "required": false; }; }, { "yearSelected": "yearSelected"; "monthSelected": "monthSelected"; "openedStream": "opened"; "closedStream": "closed"; }, ["_customIcon"], never, false, never>;
 }
-export {};
