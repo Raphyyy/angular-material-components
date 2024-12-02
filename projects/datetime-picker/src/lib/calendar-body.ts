@@ -51,17 +51,18 @@ export interface NgxMatCalendarUserEvent<D> {
  * @docs-private
  */
 @Component({
-  selector: '[ngx-mat-calendar-body]',
-  templateUrl: 'calendar-body.html',
-  styleUrls: ['calendar-body.scss'],
-  host: {
-    'class': 'ngx-mat-calendar-body',
-    'role': 'grid',
-    'aria-readonly': 'true'
-  },
-  exportAs: 'NgxMatCalendarBody',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: '[ngx-mat-calendar-body]',
+    templateUrl: 'calendar-body.html',
+    styleUrls: ['calendar-body.scss'],
+    host: {
+        'class': 'ngx-mat-calendar-body',
+        'role': 'grid',
+        'aria-readonly': 'true'
+    },
+    exportAs: 'NgxMatCalendarBody',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class NgxMatCalendarBody implements OnChanges, OnDestroy {
   /**

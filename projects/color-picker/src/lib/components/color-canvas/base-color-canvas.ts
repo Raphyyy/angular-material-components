@@ -3,7 +3,7 @@ import { Color } from '../../models';
 import { Subject } from 'rxjs';
 
 @Directive({
-
+    standalone: false
 })
 export abstract class NgxMatBaseColorCanvas implements OnDestroy, AfterViewInit {
 

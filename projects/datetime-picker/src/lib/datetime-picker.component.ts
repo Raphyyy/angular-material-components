@@ -44,22 +44,23 @@ const _MatDatetimepickerContentBase = mixinColor(
  * @docs-private
  */
 @Component({
-  selector: 'ngx-mat-datetime-content',
-  templateUrl: 'datetime-content.component.html',
-  styleUrls: ['datetime-content.component.scss'],
-  host: {
-    'class': 'mat-datepicker-content',
-    '[@transformPanel]': '"enter"',
-    '[class.mat-datepicker-content-touch]': 'datepicker.touchUi',
-  },
-  animations: [
-    matDatepickerAnimations.transformPanel,
-    matDatepickerAnimations.fadeInCalendar,
-  ],
-  exportAs: 'ngxMatDatetimeContent',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  inputs: ['color'],
+    selector: 'ngx-mat-datetime-content',
+    templateUrl: 'datetime-content.component.html',
+    styleUrls: ['datetime-content.component.scss'],
+    host: {
+        'class': 'mat-datepicker-content',
+        '[@transformPanel]': '"enter"',
+        '[class.mat-datepicker-content-touch]': 'datepicker.touchUi',
+    },
+    animations: [
+        matDatepickerAnimations.transformPanel,
+        matDatepickerAnimations.fadeInCalendar,
+    ],
+    exportAs: 'ngxMatDatetimeContent',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    inputs: ['color'],
+    standalone: false
 })
 export class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentBase
   implements AfterViewInit, CanColor {
@@ -113,11 +114,12 @@ export class NgxMatDatetimeContent<D> extends _MatDatetimepickerContentBase
 // if angular adds support for `exportAs: '$implicit'` on directives.
 /** Component responsible for managing the datepicker popup/dialog. */
 @Component({
-  selector: 'ngx-mat-datetime-picker',
-  template: '',
-  exportAs: 'ngxMatDatetimePicker',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  encapsulation: ViewEncapsulation.None,
+    selector: 'ngx-mat-datetime-picker',
+    template: '',
+    exportAs: 'ngxMatDatetimePicker',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class NgxMatDatetimePicker<D> implements OnDestroy, CanColor {
 

@@ -2,13 +2,14 @@ import { Component, OnInit, ViewEncapsulation, Output, EventEmitter, Input } fro
 import { Color } from '../../models';
 
 @Component({
-  selector: 'ngx-mat-color-palette',
-  templateUrl: 'color-palette.component.html',
-  styleUrls: ['color-palette.component.scss'],
-  encapsulation: ViewEncapsulation.None,
-  host: {
-    'class': 'ngx-mat-color-palette'
-  }
+    selector: 'ngx-mat-color-palette',
+    templateUrl: 'color-palette.component.html',
+    styleUrls: ['color-palette.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    host: {
+        'class': 'ngx-mat-color-palette'
+    },
+    standalone: false
 })
 export class NgxMatColorPaletteComponent implements OnInit {
 

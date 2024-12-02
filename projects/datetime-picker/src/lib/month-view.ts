@@ -54,11 +54,12 @@ const DAYS_PER_WEEK = 7;
  * @docs-private
  */
 @Component({
-  selector: 'ngx-mat-month-view',
-  templateUrl: 'month-view.html',
-  exportAs: 'ngxMatMonthView',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'ngx-mat-month-view',
+    templateUrl: 'month-view.html',
+    exportAs: 'ngxMatMonthView',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class NgxMatMonthView<D> implements AfterContentInit, OnDestroy {
   private _rerenderSubscription = Subscription.EMPTY;

@@ -74,6 +74,7 @@ export class MatDatetimePickerInputEvent<D> {
         '(keydown)': '_onKeydown($event)',
     },
     exportAs: 'ngxMatDatetimePickerInput',
+    standalone: false
 })
 export class NgxMatDatetimeInput<D> implements ControlValueAccessor, OnDestroy, Validator {
     /** The datepicker that this input is associated with. */

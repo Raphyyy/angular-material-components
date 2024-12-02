@@ -7,21 +7,22 @@ import { NgxMatDateAdapter } from './core/date-adapter';
 import { createMissingDateImplError, DEFAULT_STEP, formatTwoDigitTimeValue, LIMIT_TIMES, MERIDIANS, NUMERIC_REGEX, PATTERN_INPUT_HOUR, PATTERN_INPUT_MINUTE, PATTERN_INPUT_SECOND } from './utils/date-utils';
 
 @Component({
-  selector: 'ngx-mat-timepicker',
-  templateUrl: './timepicker.component.html',
-  styleUrls: ['./timepicker.component.scss'],
-  host: {
-    'class': 'ngx-mat-timepicker'
-  },
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => NgxMatTimepickerComponent),
-      multi: true
-    }
-  ],
-  exportAs: 'ngxMatTimepicker',
-  encapsulation: ViewEncapsulation.None,
+    selector: 'ngx-mat-timepicker',
+    templateUrl: './timepicker.component.html',
+    styleUrls: ['./timepicker.component.scss'],
+    host: {
+        'class': 'ngx-mat-timepicker'
+    },
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => NgxMatTimepickerComponent),
+            multi: true
+        }
+    ],
+    exportAs: 'ngxMatTimepicker',
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class NgxMatTimepickerComponent<D> implements ControlValueAccessor, OnInit, AfterViewInit, OnChanges {
 

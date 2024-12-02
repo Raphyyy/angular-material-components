@@ -25,11 +25,12 @@ export type MatCalendarView = 'month' | 'year' | 'multi-year';
 
 /** Default header for NgxMatCalendar */
 @Component({
-  selector: 'ngx-mat-calendar-header',
-  templateUrl: 'calendar-header.html',
-  exportAs: 'ngxMatCalendarHeader',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'ngx-mat-calendar-header',
+    templateUrl: 'calendar-header.html',
+    exportAs: 'ngxMatCalendarHeader',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class NgxMatCalendarHeader<D> {
   constructor(private _intl: MatDatepickerIntl,
@@ -148,15 +149,16 @@ export class NgxMatCalendarHeader<D> {
  * @docs-private
  */
 @Component({
-  selector: 'ngx-mat-calendar',
-  templateUrl: 'calendar.html',
-  styleUrls: ['calendar.scss'],
-  host: {
-    'class': 'mat-calendar',
-  },
-  exportAs: 'ngxMatCalendar',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'ngx-mat-calendar',
+    templateUrl: 'calendar.html',
+    styleUrls: ['calendar.scss'],
+    host: {
+        'class': 'mat-calendar',
+    },
+    exportAs: 'ngxMatCalendar',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class NgxMatCalendar<D> implements AfterContentInit, AfterViewChecked, OnDestroy, OnChanges {
   /** An input indicating the type of the header component, if set. */
